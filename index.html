@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dobry Lot 4.1 - © 2024 Marcin Ladach. Wszelkie prawa zastrzeżone </title>
+    <title>Dobry Lot 4.1 - Zarządzanie Wodą</title>
     <script src="https://js.stripe.com/v3/"></script> <!-- DODANE DLA PŁATNOŚCI -->
     <style>
         :root { --primary-color: #667eea; --secondary-color: #764ba2; --gold-color: #FFD700; --gold-coin-color: #f9b233; }
@@ -29,7 +29,7 @@
         
         /* Menu Główne */
         #mainMenu.screen.active { background: radial-gradient(circle at 50% 100%, #fdbb2d 0%, #f48924 25%, #d65b4a 50%, #4a3f63 100%); justify-content: center; align-items: center; padding: 20px; }
-        #mainMenu .menu { display:flex; flex-direction:column; justify-content: space-around; height: 100%; width: 100%; max-width: 400px; }
+        #mainMenu .menu { position: relative; display:flex; flex-direction:column; justify-content: space-around; height: 100%; width: 100%; max-width: 400px; }
         .main-header { text-align: center; margin-bottom: 20px; }
         .main-logo { font-family: 'Arial Black', Gadget, sans-serif; font-size: clamp(3em, 12vw, 5em); color: #f0f0f0; text-transform: uppercase; text-shadow: -2px -2px 0 #1e5799, 2px -2px 0 #1e5799, -2px 2px 0 #1e5799, 2px 2px 0 #1e5799, 4px 4px 5px rgba(0,0,0,0.4); line-height: 1; }
         .main-subtitle { font-size: clamp(1em, 4vw, 1.5em); color: white; font-weight: bold; text-shadow: 1px 1px 3px rgba(0,0,0,0.5); margin-top: 10px; }
@@ -41,6 +41,7 @@
         .menu-btn-text { font-size: 18px; font-weight: bold; text-transform: uppercase; }
         .save-load-box { margin-top: 20px; display: flex; justify-content: center; gap: 10px; }
         .save-load-box .btn { padding: 8px 16px; font-size: 14px; }
+        .footer { position: absolute; bottom: 20px; left: 0; right: 0; text-align: center; font-size: 12px; color: rgba(255, 255, 255, 0.6); text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
         
         /* Podwórko */
         #farm.screen.active { background: linear-gradient(to bottom, #87CEEB 0%, #90d8f0 60%, #a8e063 60%, #56ab2f 100%); }
@@ -158,6 +159,9 @@
             <button class="btn menu-btn" onclick="DobryLotGame.goTo('achievements')"><span class="menu-btn-icon">🏅</span><span class="menu-btn-text">Osiągnięcia</span></button>
         </nav>
         <div class="save-load-box"><button class="btn" onclick="DobryLotGame.saveGame()">Zapisz</button><button class="btn" onclick="DobryLotGame.loadGame()">Wczytaj</button></div>
+        <div class="footer">
+            ©htm2025 Marcin Ladach. Wszelkie prawa zastrzeżone.
+        </div>
     </div>
 </div>
 
@@ -247,7 +251,7 @@
 const DobryLotGame = {
     // --- POCZĄTEK ZMIAN DLA PŁATNOŚCI ---
     stripe: null,
-    backendUrl: 'https://dobry-lot-stripe-backend.glitch.me/create-checkout-session', // GOTOWY, DZIAŁAJĄCY SERWER!
+    backendUrl: 'https://dobry-lot-backend.onrender.com/create-checkout-session', // TWÓJ DZIAŁAJĄCY ADRES Z RENDER.COM!
     premiumProducts: {
         '100zm': { name: '100 ZM', icon: '💰', price: '5 PLN', zm_amount: 100 },
         '550zm': { name: '550 ZM', icon: '💰💰', price: '25 PLN', zm_amount: 550 },
@@ -965,7 +969,7 @@ const DobryLotGame = {
                 id: pigeon.id, pigeon, price,
                 expires: Date.now() + this.config.AUCTION_DURATION_MS
             });
-            this.msg(`${p.name} został wystawiony na aukcję!`, 'success');
+            this.msg(`${pigeon.name} został wystawiony na aukcję!`, 'success');
             this.closeModal(); this.refreshActiveScreen();
         }
     },
