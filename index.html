@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dobry Lot 4.1 - Zarządzanie Wodą</title>
+    <script src="https://js.stripe.com/v3/"></script> <!-- DODANE DLA PŁATNOŚCI -->
+    <style>
+        :root { --primary-color: #667eea; --secondary-color: #764ba2; --gold-color: #FFD700; --gold-coin-color: #f9b233; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #a8e063 0%, #56ab2f 100%); min-height: 100vh; color: #333; }
+        .screen { display: none; min-height: 100vh; padding: 20px; opacity: 0; transition: opacity 0.4s ease-in-out; }
+        .screen.active { display: flex; flex-direction: column; opacity: 1; }
+        .header { background: rgba(255,255,255,0.8); backdrop-filter: blur(5px); padding: 15px; color: #333; display: flex; justify-content: space-between; align-items: center; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); flex-shrink: 0; }
+        .player-info { font-weight: bold; display: flex; align-items: center; }
+        .header-resources span { margin-left: 15px; }
+        .xp-bar-container { width: 100px; height: 10px; background: rgba(0,0,0,0.1); border-radius: 5px; margin-left: 10px; display: inline-block; overflow: hidden; }
+        .xp-bar-fill { height: 100%; background: var(--gold-color); border-radius: 5px; transition: width 0.5s cubic-bezier(0.25, 1, 0.5, 1); }
+        .btn { background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; cursor: pointer; margin: 5px; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .btn:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.2); filter: brightness(1.15); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; filter: none; }
+        .card { background: white; border-radius: 15px; padding: 20px; margin: 10px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; padding: 20px; overflow-y: auto; }
+        .modal.active { display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: white; border-radius: 15px; padding: 30px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; animation: modal-pop 0.3s cubic-bezier(0.25, 1, 0.5, 1); }
+        @keyframes modal-pop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .info-box { background: #e3f2fd; padding: 15px; border-radius: 10px; margin: 10px 0; border-left: 4px solid #2196F3; }
+        .warning-box { background: #fff3e0; border-left-color: #ff9800; }
+        
+        /* Menu Główne */
+        #mainMenu.screen.active { background: radial-gradient(circle at 50% 100%, #fdbb2d 0%, #f48924 25%, #d65b4a 50%, #4a3f63 100%); justify-content: center; align-items: center; padding: 20px; }
+        #mainMenu .menu { display:flex; flex-direction:column; justify-content: space-around; height: 100%; width: 100%; max-width: 400px; }
+        .main-header { text-align: center; margin-bottom: 20px; }
+        .main-logo { font-family: 'Arial Black', Gadget, sans-serif; font-size: clamp(3em, 12vw, 5em); color: #f0f0f0; text-transform: uppercase; text-shadow: -2px -2px 0 #1e5799, 2px -2px 0 #1e5799, -2px 2px 0 #1e5799, 2px 2px 0 #1e5799, 4px 4px 5px rgba(0,0,0,0.4); line-height: 1; }
+        .main-subtitle { font-size: clamp(1em, 4vw, 1.5em); color: white; font-weight: bold; text-shadow: 1px 1px 3px rgba(0,0,0,0.5); margin-top: 10px; }
+        .main-nav { display: flex; flex-direction: column; gap: 15px; width: 100%; }
+        .menu-btn { background: linear-gradient(180deg, #2e6aa5 0%, #1e5799 100%); border: 2px solid #1c4b82; border-radius: 12px; padding: 10px 20px; display: flex; align-items: center; justify-content: flex-start; box-shadow: 0 4px 0 #1c4b82, 0 6px 8px rgba(0,0,0,0.3); transition: all 0.1s ease-out; }
+        .menu-btn:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 6px 0 #1c4b82, 0 8px 10px rgba(0,0,0,0.25); }
+        .menu-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #1c4b82, 0 4px 6px rgba(0,0,0,0.3); }
+        .menu-btn-icon { font-size: 24px; width: 40px; text-align: center; margin-right: 15px; }
+        .menu-btn-text { font-size: 18px; font-weight: bold; text-transform: uppercase; }
+        .save-load-box { margin-top: 20px; display: flex; justify-content: center; gap: 10px; }
+        .save-load-box .btn { padding: 8px 16px; font-size: 14px; }
+        
+        /* Podwórko */
+        #farm.screen.active { background: linear-gradient(to bottom, #87CEEB 0%, #90d8f0 60%, #a8e063 60%, #56ab2f 100%); }
+        .farm-container { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px; padding: 20px; }
+        .building { background: rgba(255,255,255,0.8); border-radius: 15px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+        .building:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.2); }
+        .building.locked { filter: grayscale(1) opacity(0.6); cursor: default; }
+        .building-icon { font-size: 4em; }
+        .building-name { font-size: 1.2em; font-weight: bold; margin-top: 10px; }
+        .building-cost { font-size: 1em; color: var(--gold-coin-color); font-weight: bold; margin-top: 5px; }
+        .farm-nav { display: flex; justify-content: center; flex-wrap: wrap; padding: 15px; background: rgba(0,0,0,0.2); backdrop-filter: blur(5px); }
+
+        /* Skórki Gołębników */
+        .building.skin-classic { background: linear-gradient(135deg, #81D4FA, #29B6F6); border: 4px solid #8B4513; color: #3E2723; }
+        .building.skin-modern { background: linear-gradient(135deg, #455A64, #263238); border: 4px solid #00BCD4; color: #ECEFF1; text-shadow: 0 0 5px #00E5FF; box-shadow: 0 0 15px rgba(3, 169, 244, 0.5), 0 4px 10px rgba(0,0,0,0.15); }
+        .skin-option { display: flex; justify-content: space-between; align-items: center; padding: 15px; border: 2px solid #eee; border-radius: 10px; margin-bottom: 10px; }
+        .skin-option.active { border-color: var(--primary-color); background-color: #f0f3ff; }
+
+        /* Liga */
+        .league-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .league-table th, .league-table td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+        .league-table tr.player-row { background-color: #e3f2fd; font-weight: bold; }
+        .league-info { text-align: center; }
+        .league-badge { font-size: 2em; font-weight: bold; padding: 10px 20px; border-radius: 10px; display: inline-block; margin: 10px 0; }
+        .league-badge-bronze { background: #CD7F32; color: white; }
+        .league-badge-silver { background: #C0C0C0; color: #333; }
+        .league-badge-gold { background: #FFD700; color: #333; }
+        .league-badge-diamond { background: #b9f2ff; color: #333; }
+
+        /* Pogoda */
+        .weather-box { padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center; color: white; font-weight: bold; }
+        .weather-sunny { background: linear-gradient(to right, #ffb347, #ffcc33); }
+        .weather-windy { background: linear-gradient(to right, #757f9a, #d7dde8); color: #333; }
+        .weather-rainy { background: linear-gradient(to right, #4b79a1, #283e51); }
+        
+        /* Sortowanie w gołębniku */
+        .loft-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px; }
+        .sort-btn { background: #fff; border: 1px solid #ddd; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
+        .sort-btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+        
+        /* Karmniki/Poidła */
+        .feeders-drinkers { font-size: 2em; cursor: pointer; padding: 5px; border-radius: 50%; transition: background 0.2s; }
+        .feeders-drinkers:hover { background: rgba(0,0,0,0.1); }
+        .feed-option { display: flex; justify-content: space-between; align-items: center; padding: 10px; border: 2px solid #eee; border-radius: 10px; margin-bottom: 10px; }
+        .feed-option.active { border-color: var(--primary-color); background: #f0f3ff; }
+
+        /* Zadania */
+        .task-card { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 15px; }
+        .task-info { flex-grow: 1; }
+        .task-progress-bar { height: 10px; background: #eee; border-radius: 5px; overflow: hidden; margin-top: 5px; }
+        .task-progress-fill { height: 100%; background: var(--gold-color); border-radius: 5px; transition: width 0.3s; }
+
+        /* Aukcje */
+        .auction-card { display: flex; justify-content: space-between; align-items: center; gap: 15px; padding: 15px; border-radius: 10px; margin-bottom: 10px; background: #f9f9f9; }
+        .auction-details { flex-grow: 1; }
+        .auction-details small { color: #666; }
+
+        /* Pozostałe style */
+        .loft-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .loft-shelf { background: #f5f5f5; border: 2px solid #ddd; border-radius: 10px; padding: 10px; min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.2s; }
+        .loft-shelf.occupied { cursor: pointer; background: white; }
+        .loft-shelf.occupied:hover { transform: scale(1.05); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .loft-shelf .pigeon-icon { font-size: 2.5em; line-height: 1; }
+        .loft-shelf .pigeon-name { font-weight: bold; font-size: 14px; margin: 5px 0; }
+        .loft-shelf .pigeon-status { font-size: 12px; color: #666; }
+        .loft-shelf .pigeon-status.sick { color: #f44336; font-weight: bold; }
+        .loft-shelf.empty { background: #e8f5e9; border-style: dashed; color: #388e3c; }
+        .loft-pagination { display: flex; justify-content: center; align-items: center; gap: 15px; }
+        .btn-unlock { background: linear-gradient(135deg, #ffc107, #ff8f00); border: none; box-shadow: 0 4px 0 #c77c00; }
+        .breeding-cells-container { margin-top: 30px; }
+        .breeding-cell { background: #fffde7; border: 2px dashed #ccc; border-radius: 10px; padding: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px; }
+        .breeding-cell-pair { display: flex; align-items: center; gap: 15px; }
+        .breeding-cell-pigeon { text-align: center; }
+        .btn-sell { background: linear-gradient(135deg, #f44336, #d32f2f); }
+        .stat-bar { background: #e0e0e0; height: 8px; border-radius: 4px; overflow: hidden; margin: 5px 0; }
+        .stat-fill { height: 100%; background: linear-gradient(90deg, #4CAF50, #8BC34A); transition: width 0.3s; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; margin: 15px 0; }
+        .pigeon-card { background: white; border-radius: 10px; padding: 15px; margin: 10px 0; transition: all 0.3s; border: 2px solid #e0e0e0; }
+        .pigeon-card:hover { transform: translateY(-5px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+        .pigeon-card.selected { border-color: #4CAF50; background: #e8f5e9; }
+        .modal-tabs, .market-tabs { display: flex; border-bottom: 1px solid #ddd; margin-bottom: 20px; }
+        .modal-tab, .market-tab { padding: 10px 15px; cursor: pointer; color: #999; font-weight: bold; }
+        .modal-tab.active, .market-tab.active { color: var(--primary-color); border-bottom: 3px solid var(--primary-color); }
+        .modal-tab-content, .market-tab-content { display: none; }
+        .modal-tab-content.active, .market-tab-content.active { display: block; }
+        .history-item { padding: 8px; border-bottom: 1px solid #eee; font-size: 14px; }
+        .history-item:last-child { border-bottom: none; }
+        .item-row { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
+        .pigeon-potential { color: var(--gold-color); font-size: 20px; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
+        .pigeon-title-badge { background: var(--secondary-color); color: white; padding: 3px 8px; border-radius: 5px; font-size: 12px; margin-left: 8px; vertical-align: middle; }
+        
+        /* Poprawki Responsywności */
+        .building { max-width: 250px; width: 80%; }
+        @media (max-width: 480px) {
+            .building-name { font-size: 1em; }
+            .header { flex-wrap: wrap; justify-content: center; gap: 10px; }
+            .header-resources { width: 100%; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- EKRANY GRY -->
+<div id="mainMenu" class="screen">
+    <div class="menu">
+        <div class="main-header"><h1 class="main-logo">DOBRY LOT</h1><p class="main-subtitle">ZBUDUJ WŁASNĄ HODOWLĘ GOŁĘBI!</p></div>
+        <nav class="main-nav">
+            <button class="btn menu-btn" onclick="DobryLotGame.goTo('farm')"><span class="menu-btn-icon">🏡</span><span class="menu-btn-text">Hodowla</span></button>
+            <button class="btn menu-btn" onclick="DobryLotGame.goTo('tasks')"><span class="menu-btn-icon">📝</span><span class="menu-btn-text">Zadania</span></button>
+            <button class="btn menu-btn" onclick="DobryLotGame.goTo('league')"><span class="menu-btn-icon">🏆</span><span class="menu-btn-text">Liga</span></button>
+            <button class="btn menu-btn" onclick="DobryLotGame.goTo('market')"><span class="menu-btn-icon">📈</span><span class="menu-btn-text">Rynek</span></button>
+            <button class="btn menu-btn" onclick="DobryLotGame.goTo('training')"><span class="menu-btn-icon">🏋️</span><span class="menu-btn-text">Trening</span></button>
+            <button class="btn menu-btn" onclick="DobryLotGame.goTo('races')"><span class="menu-btn-icon">🏁</span><span class="menu-btn-text">Wyścigi</span></button>
+            <button class="btn menu-btn" onclick="DobryLotGame.goTo('shop')"><span class="menu-btn-icon">🛒</span><span class="menu-btn-text">Sklep</span></button>
+            <button class="btn menu-btn" onclick="DobryLotGame.goTo('achievements')"><span class="menu-btn-icon">🏅</span><span class="menu-btn-text">Osiągnięcia</span></button>
+        </nav>
+        <div class="save-load-box"><button class="btn" onclick="DobryLotGame.saveGame()">Zapisz</button><button class="btn" onclick="DobryLotGame.loadGame()">Wczytaj</button></div>
+    </div>
+</div>
+
+<div id="farm" class="screen">
+    <div class="header">
+        <button class="btn" onclick="DobryLotGame.goTo('mainMenu')">← Menu Główne</button>
+        <div class="player-info" id="headerPlayerInfoFarm"></div>
+        <div class="header-resources">
+            <span>💧 <span id="waterFarm"></span> L</span>
+            <span>💰 <span id="moneyFarm"></span> zł</span>
+            <span>🪙 <span id="goldCoinsFarm"></span> ZM</span>
+        </div>
+    </div>
+    <div class="farm-container" id="farmContainer"></div>
+    <nav class="farm-nav">
+        <button class="btn" onclick="DobryLotGame.refillWater()">💧 Napełnij Poidła</button>
+        <button class="btn" onclick="DobryLotGame.goTo('inventory')">💊 Apteczka i Karma</button>
+    </nav>
+</div>
+
+<div id="tasks" class="screen">
+    <div class="header">
+        <button class="btn" onclick="DobryLotGame.goTo('mainMenu')">← Menu Główne</button>
+        <strong>ZADANIA CODZIENNE</strong>
+        <div class="player-info" id="headerPlayerInfoTasks"></div>
+    </div>
+    <div class="card">
+        <div class="info-box">Nowe zadania pojawią się jutro. Ukończ je, by zdobyć cenne nagrody!</div>
+        <div id="tasksList"></div>
+    </div>
+</div>
+
+<div id="league" class="screen"><div class="header"><button class="btn" onclick="DobryLotGame.goTo('mainMenu')">← Menu Główne</button><strong>LIGA HODOWCÓW</strong><div class="player-info" id="headerPlayerInfoLeague"></div></div><div class="card"><div id="leagueInfo"></div><table id="leagueTable" class="league-table"></table></div></div>
+<div id="loft" class="screen"><div class="header"><button class="btn" onclick="DobryLotGame.goTo('farm')">← Podwórko</button><div class="player-info" id="headerPlayerInfoLoft"></div><div><h2 id="loftTitle"></h2><button class="btn" onclick="DobryLotGame.openSkinChanger()">🎨 Zmień Wygląd</button></div></div><div class="card"><div class="loft-controls" id="loftControls"></div><div id="loftGrid" class="loft-grid"></div><div id="loftPagination" class="loft-pagination"><button class="btn" id="prevLoftPageBtn" onclick="DobryLotGame.goToPrevLoftPage()">Poprzednia</button><span id="loftPageIndicator"></span><div id="nextLoftPageContainer"></div></div><div id="breedingSection" style="display:none;"><hr style="margin: 30px 0; border: 1px solid #eee;"><h3>❤️ Cele Lęgowe</h3><div id="breedingCellsContainer" class="breeding-cells-container"></div><h3 style="margin-top: 20px;">🥚 Inkubator</h3><div id="eggsList" class="info-box"></div></div></div></div>
+<div id="market" class="screen">
+    <div class="header"><button class="btn" onclick="DobryLotGame.goTo('mainMenu')">← Menu Główne</button><strong>RYNEK GOŁĘBI</strong><div class="player-info" id="headerPlayerInfoMarket"></div></div>
+    <div class="card">
+        <div class="market-tabs">
+            <div class="market-tab active" onclick="DobryLotGame.switchMarketTab(this, 'market-offers')">Oferty Gry</div>
+            <div class="market-tab" onclick="DobryLotGame.switchMarketTab(this, 'market-auctions')">Aukcje Graczy</div>
+            <div class="market-tab" onclick="DobryLotGame.switchMarketTab(this, 'my-auctions')">Moje Aukcje</div>
+        </div>
+        <div id="market-offers" class="market-tab-content active">
+            <h2>Dostępne Gołębie</h2>
+            <div class="info-box">Nowe oferty pojawiają się co jakiś czas. Czas do odświeżenia: <strong id="marketRefreshTimer"></strong></div>
+            <div id="marketList"></div>
+        </div>
+        <div id="market-auctions" class="market-tab-content">
+            <h2>Aukcje Graczy</h2>
+            <div id="auctionList"></div>
+        </div>
+        <div id="my-auctions" class="market-tab-content">
+            <h2>Moje Aukcje</h2>
+            <div id="myAuctionList"></div>
+        </div>
+    </div>
+</div>
+<div id="training" class="screen"><div class="header"><button class="btn" onclick="DobryLotGame.goTo('mainMenu')">← Menu Główne</button><strong>TRENING</strong><div class="player-info" id="headerPlayerInfoTraining"></div></div><div class="card"><div class="info-box"><p>Wysyłaj gołębie na treningi, aby poprawić ich statystyki, ale pamiętaj, że gołąb nie może przekroczyć swojego maksymalnego potencjału.</p></div><div id="trainingList"></div></div></div>
+<div id="races" class="screen"><div class="header"><button class="btn" onclick="DobryLotGame.goTo('mainMenu')">← Menu Główne</button><strong>PLAN LOTÓW SEZONOWYCH</strong><div class="player-info" id="headerPlayerInfoRaces"></div></div><div class="card"><div class="info-box">Tutaj możesz wziąć udział w kolejnym locie z kalendarza. Loty te wliczają się do punktacji ligowej. Zwróć uwagę na pogodę!</div><div id="racesList"></div></div></div>
+<div id="shop" class="screen">
+    <div class="header"><button class="btn" onclick="DobryLotGame.goTo('mainMenu')">← Menu Główne</button><strong>SKLEP</strong><div class="player-info" id="headerPlayerInfoShop"></div></div>
+    <div class="card">
+        <h2>🛒 Sklep Hodowcy</h2>
+        <div id="shopItems" class="stats-grid"></div>
+        <!-- DODANE DLA PŁATNOŚCI -->
+        <hr style="margin: 30px 0;">
+        <h2>🪙 Doładuj Złote Monety</h2>
+        <p>Kup pakiety Złotych Monet, aby przyspieszyć rozwój swojej hodowli!</p>
+        <div id="premiumShopItems" class="stats-grid">
+        </div>
+        <!-- KONIEC SEKCJI PŁATNOŚCI -->
+    </div>
+</div>
+<div id="achievements" class="screen"><div class="header"><button class="btn" onclick="DobryLotGame.goTo('mainMenu')">← Menu Główne</button><strong>OSIĄGNIĘCIA</strong><div class="player-info" id="headerPlayerInfoAchievements"></div></div><div class="card"><h2>🏅 Moje Osiągnięcia</h2><p>Odblokuj wszystkie, by zostać legendą sportu lotowego!</p><div id="achievementsList" style="margin-top: 20px;"></div></div></div>
+<div id="inventory" class="screen"><div class="header"><button class="btn" onclick="DobryLotGame.goTo('farm')">← Podwórko</button><strong>INWENTARZ</strong><div class="player-info" id="headerPlayerInfoInventory"></div></div><div class="card"><div id="inventoryList"></div></div></div>
+
+<div id="pigeonModal" class="modal"><div class="modal-content"><h2 id="modalPigeonName"></h2><div id="modalPigeonDetails"></div><div id="pigeonActions" style="margin-top:20px;"></div><button class="btn" onclick="DobryLotGame.closeModal()" style="width: 100%; margin-top: 10px;">ZAMKNIJ</button></div></div>
+<div id="selectionModal" class="modal"><div class="modal-content"><h2 id="selectionTitle"></h2><div id="selectionContent"></div></div></div>
+<div id="resultsModal" class="modal"><div class="modal-content"><h2 id="resultsTitle"></h2><div id="resultsContent"></div><button class="btn" onclick="DobryLotGame.closeModal()" style="width: 100%; margin-top: 20px;">ZAMKNIJ</button></div></div>
+<div id="hatchlingModal" class="modal"><div class="modal-content"><h2 style="text-align: center;">🐣 Wykluło się pisklę! 🐣</h2><p style="text-align: center; color: #666; margin-bottom: 20px;">Trafi do Gołębnika Młodych.</p><div id="hatchlingDetails" class="stats-grid" style="grid-template-columns: repeat(3, 1fr);"></div><div id="hatchlingPerks"></div><input type="text" id="hatchlingNameInput" placeholder="Nadaj imię..."><button class="btn" onclick="DobryLotGame.confirmHatchlingName()" style="width: 100%;">POTWIERDŹ</button></div></div>
+<div id="skinChangerModal" class="modal"><div class="modal-content"><h2>Zmień Wygląd Gołębnika</h2><div id="skinOptionsContainer"></div><button class="btn" onclick="DobryLotGame.closeModal()" style="width:100%; margin-top:15px;">Anuluj</button></div></div>
+<div id="feedModal" class="modal"><div class="modal-content"><h2>Zarządzaj Żywieniem</h2><div id="feedOptionsContainer"></div><button class="btn" onclick="DobryLotGame.closeModal()" style="width:100%; margin-top:15px;">Anuluj</button></div></div>
+
+<audio id="audio_click" src="click.mp3" preload="auto"></audio><audio id="audio_cash" src="cash.mp3" preload="auto"></audio><audio id="audio_levelup" src="levelup.mp3" preload="auto"></audio><audio id="audio_achievement" src="achievement.mp3" preload="auto"></audio><audio id="audio_hatch" src="hatch.mp3" preload="auto"></audio>
+
+<script>
+const DobryLotGame = {
+    // --- POCZĄTEK ZMIAN DLA PŁATNOŚCI ---
+    stripe: null,
+    backendUrl: 'https://dobry-lot-backend.onrender.com/create-checkout-session', // TWÓJ DZIAŁAJĄCY ADRES Z RENDER.COM!
+    premiumProducts: {
+        '100zm': { name: '100 ZM', icon: '💰', price: '5 PLN', zm_amount: 100 },
+        '550zm': { name: '550 ZM', icon: '💰💰', price: '25 PLN', zm_amount: 550 },
+        '1200zm': { name: '1200 ZM', icon: '💰💰💰', price: '50 PLN', zm_amount: 1200 },
+    },
+    // --- KONIEC ZMIAN DLA PŁATNOŚCI ---
+    config: {
+        BREEDING_COST: 500, LOFT_PAGE_UNLOCK_COST_GOLD: 25, SHELVES_PER_PAGE: 9, MAX_LOFT_PAGES: 10, BREEDING_CELLS: 5,
+        BREEDING_COOLDOWN_MS: 1 * 60 * 60 * 1000, TWO_EGGS_CHANCE: 0.3, HIGHER_POTENTIAL_CHANCE: 0.25,
+        MARKET_REFRESH_INTERVAL_MS: 15 * 60 * 1000, AUCTION_DURATION_MS: 24 * 60 * 60 * 1000, AUCTION_COMMISSION: 0.1,
+        DISEASE_CHANCE_PER_TICK: 0.001, FOOD_CONSUMPTION_INTERVAL_MS: 60 * 60 * 1000,
+        SEASON_DURATION_MS: 7 * 24 * 60 * 60 * 1000,
+        SEASON_RACE_SCHEDULE: [
+            { name: 'Lot Okręgowy I', distance: 150, type: 'old', prize: 800 }, { name: 'Lot Okręgowy II', distance: 180, type: 'old', prize: 900 }, { name: 'Lot Wojewódzki I', distance: 250, type: 'old', prize: 1200 }, { name: 'Lot Wojewódzki II', distance: 300, type: 'old', prize: 1500 }, { name: 'Lot Krajowy I', distance: 350, type: 'old', prize: 2000 }, { name: 'Lot Krajowy II', distance: 400, type: 'old', prize: 2500 }, { name: 'Lot Krajowy III', distance: 450, type: 'old', prize: 3000 }, { name: 'Półfinał Krajowy', distance: 500, type: 'old', prize: 4000 }, { name: 'Finał Krajowy', distance: 550, type: 'old', prize: 5000 }, { name: 'Maraton Międzynarodowy I', distance: 650, type: 'marathon', prize: 7000 }, { name: 'Maraton Międzynarodowy II', distance: 750, type: 'marathon', prize: 8500 }, { name: 'Supermaraton Bruksela', distance: 900, type: 'marathon', prize: 12000 }, { name: 'Lot Młodych I', distance: 100, type: 'young', prize: 500 }, { name: 'Lot Młodych II', distance: 120, type: 'young', prize: 600 }, { name: 'Lot Młodych III', distance: 150, type: 'young', prize: 750 }, { name: 'Finał Młodych', distance: 200, type: 'young', prize: 1500 },
+        ],
+        MIN_AGE_OLD: 12, MIN_AGE_YOUNG: 6,
+        POTENTIAL_STAT_CAPS: { 1: 65, 2: 75, 3: 85, 4: 95, 5: 100 },
+        WEATHER_TYPES: {
+            sunny: { name: "Słonecznie", icon: "☀️", weights: { s: 0.5, t: 0.3, n: 0.2 }, loss_multiplier: 1.0 },
+            windy: { name: "Wietrznie", icon: "💨", weights: { s: 0.3, t: 0.5, n: 0.2 }, loss_multiplier: 1.2 },
+            rainy: { name: "Deszczowo", icon: "🌧️", weights: { s: 0.2, t: 0.3, n: 0.5 }, loss_multiplier: 1.5 },
+        },
+        PIGEON_TITLES: {
+            ace_flyer: { name: "As Lotnik", condition: p => p.history.filter(h => h.type === 'race' && h.place <= 10).length >= 5 },
+            marathon_king: { name: "Król Maratonów", condition: p => p.history.filter(h => h.type === 'race' && h.place === 1 && DobryLotGame.config.SEASON_RACE_SCHEDULE.find(r => r.name === h.name)?.type === 'marathon').length >= 3 },
+            legend: { name: "Legenda Gołębnika", condition: p => p.wins >= 10 }
+        },
+        DAILY_TASKS_POOL: [
+            { id: 'win_races', text: 'Wygraj 1 wyścig', target: 1, type: 'win_races', reward: { money: 1000 } },
+            { id: 'train_pigeons', text: 'Wytrenuj 3 gołębie', target: 3, type: 'train_pigeons', reward: { money: 500 } },
+            { id: 'earn_money', text: 'Zarób 2000 zł z wyścigów', target: 2000, type: 'earn_money', reward: { goldCoins: 5 } },
+            { id: 'breed_pigeon', text: 'Wyhoduj 1 pisklę', target: 1, type: 'breed_pigeon', reward: { money: 750 } },
+            { id: 'buy_market', text: 'Kup gołębia z rynku', target: 1, type: 'buy_market', reward: { goldCoins: 3 } }
+        ],
+        BUILDINGS: { breeding: { name: 'Gołębnik Rozpłodowy', unlockCost: 50 } },
+        SKINS: { classic: { name: 'Klasyczny Drewniany', cost: 0 }, modern: { name: 'Nowoczesny Futuro', cost: 100 } },
+        ITEMS: { 
+            feed_basic: { name: 'Karma Bytowa', icon: '🌾', cost: 100, desc: 'Podstawowa karma do codziennego żywienia. 100 kg.', type: 'feed' },
+            feed_racing: { name: 'Karma Lotowa', icon: '🚀', cost: 300, desc: 'Specjalna mieszanka przyspieszająca regenerację lotników. 100 kg.', type: 'feed' },
+            feed_breeding: { name: 'Karma Rozpłodowa', icon: '❤️', cost: 300, desc: 'Zwiększa szansę na potomstwo o wyższym potencjale. 100 kg.', type: 'feed' },
+            vitamins: { name: 'Witaminy', icon: '💊', cost: 500, desc: 'Podnosi kondycję wszystkich gołębi o 5 pkt.', type: 'consumable' }, 
+            energy: { name: 'Odżywka', icon: '⚡', cost: 500, desc: 'Podnosi formę wszystkich gołębi o 5 pkt.', type: 'consumable' }, 
+            electrolytes: { name: 'Elektrolity', icon: '💧', cost: 200, desc: 'Jednorazowo zmniejsza utratę kondycji w locie.', type: 'supplement' },
+            speed_booster: { name: 'Booster Szybkości', icon: '💨', cost: 500, desc: 'Jednorazowo zwiększa szybkość w najbliższym locie.', type: 'supplement' },
+            antibiotic: { name: 'Antybiotyk', icon: '🔬', cost: 1000, desc: 'Leczy jednego losowego chorego gołębia.', type: 'consumable' },
+            tipes: { name: 'Tipes Elektroniczny', icon: '🔘', cost: 250, desc: 'Niezbędny do udziału w lotach. Przypisz go do gołębia.', type: 'equipment' },
+            antenna: { name: 'Antena Lotowa', icon: '📡', cost: 50, isGoldCoin: true, desc: 'Jednorazowy zakup. Niezbędna, by brać udział w lotach.', type: 'equipment' }
+        },
+        LEAGUES: { bronze: { id: 'bronze', name: 'Liga Brązowa', promotion: 150, relegation: 50, opponents: 9, prize: { money: 1000, gold: 5 } }, silver: { id: 'silver', name: 'Liga Srebrna', promotion: 250, relegation: 100, opponents: 14, prize: { money: 5000, gold: 15 } }, gold: { id: 'gold', name: 'Liga Złota', promotion: 400, relegation: 200, opponents: 19, prize: { money: 15000, gold: 30 } }, diamond: { id: 'diamond', name: 'Liga Diamentowa', promotion: 999, relegation: 300, opponents: 19, prize: { money: 50000, gold: 75 } } },
+        LEAGUE_RACE_CONFIG: { points: [25, 18, 15, 12, 10, 8, 6, 4, 2, 1], prize_multiplier: 1.0 },
+        EGG_HATCH_DURATION_MS: 10 * 60 * 1000, REST_BASE_DURATION_MS_PER_100KM: 3 * 60 * 1000, AGE_UP_INTERVAL_MS: 5 * 60 * 1000,
+        BLOODLINES: { janssen: { name: 'Janssen', icon: '🕊️', speed: 1.2, stamina: 1.0, navigation: 1.0, cost: 2000 }, vanloon: { name: 'Van Loon', icon: '🐦', speed: 1.0, stamina: 1.2, navigation: 1.0, cost: 2000 }, aarden: { name: 'Aarden', icon: '🦅', speed: 0.9, stamina: 1.3, navigation: 1.1, cost: 3500 }, meulemans: { name: 'Meulemans', icon: '🦉', speed: 1.1, stamina: 1.1, navigation: 1.1, cost: 3500 }, vandenbulck: { name: 'Van den Bulck', icon: '⚡️', speed: 1.3, stamina: 0.9, navigation: 1.0, cost: 3500 }, medrysa: { name: 'Mędrysa Super Klasa', icon: '🏆', speed: 1.0, stamina: 1.4, navigation: 1.3, cost: 10000 }, },
+        TRAINING_SESSIONS: [ { id: 't1', name: 'Lot wokół domu', distance: 15, duration_ms: 10 * 60 * 1000, xp: 5, loss_chance: 0.01, min_age: 4, stat_gain_chance: 0.1 }, { id: 't2', name: 'Trening okręgowy', distance: 50, duration_ms: 30 * 60 * 1000, xp: 15, loss_chance: 0.02, min_age: 6, stat_gain_chance: 0.15 }, { id: 't3', name: 'Lot wojewódzki', distance: 100, duration_ms: 90 * 60 * 1000, xp: 30, loss_chance: 0.04, min_age: 9, stat_gain_chance: 0.2 }, { id: 't4', name: 'Próba generalna', distance: 180, duration_ms: 180 * 60 * 1000, xp: 50, loss_chance: 0.06, min_age: 12, stat_gain_chance: 0.25 } ],
+        PERKS: { rain_specialist: { name: "Specjalista od deszczu", icon: "💧", desc: "Traci mniej szybkości w deszczową pogodę." }, marathoner: { name: "Serce maratończyka", icon: "❤️‍🔥", desc: "Znacznie lepiej radzi sobie na dystansach > 400 km." }, strong_mind: { name: "Silna psychika", icon: "🧠", desc: "Szybciej odzyskuje formę i kondycję po wyścigu." }, },
+        ACHIEVEMENTS: { first_win: { icon: "🏆", name: "Pierwsze Zwycięstwo", desc: "Wygraj swój pierwszy wyścig." }, millionaire: { icon: "💰", name: "Milioner", desc: "Zgromadź 1,000,000 zł." }, geneticist: { icon: "🧬", name: "Genetyk", desc: "Wyhoduj gołębia z trzema statystykami powyżej 90." }, specialist: { icon: "🌟", name: "Specjalista", desc: "Wyhoduj gołębia z unikalną cechą (perkiem)." }, }
+    },
+    state: {}, tempHatchling: null, tempPairing: null,
+    init() {
+        // --- POCZĄTEK ZMIAN DLA PŁATNOŚCI ---
+        this.stripe = Stripe('pk_test_51SH94xDQYgO7moLRkO8n4jNGPYVSLqECkjQgpwiEmSZvrhtlW2QAVoODyCvxVgjezVuFvu2nZ0zaJ94UOts2iCTF00vnJ5599Z'); 
+        // --- KONIEC ZMIAN DLA PŁATNOŚCI ---
+
+        if (localStorage.getItem('dobryLotSaveData_v4.0')) { this.loadGame(); } else { this.startNewGame(); }
+        setInterval(() => this.gameLoop(), 1000);
+        this.checkDailyTasks();
+        this.checkPaymentStatus(); // DODANE DLA PŁATNOŚCI
+    },
+    resetGameState() { return { player: { name: 'Hodowca', level: 1, xp: 0, xpToNextLevel: 100 }, money: 5000, goldCoins: 100, water: 1000, lastFoodConsumption: 0, lastAgeUpCheck: 0, pigeons: [], eggs: [], racesInProgress: [], breedingPairs: new Array(this.config.BREEDING_CELLS).fill(null), unlockedLoftPages: { racing: 1, breeding: 1, young: 1 }, currentLoftPage: { racing: 1, breeding: 1, young: 1 }, unlockedBuildings: { breeding: false, young: true }, market: { offers: [], nextRefresh: 0, playerAuctions: [], publicAuctions: [] }, buildingSkins: { racing: 'classic', breeding: 'classic', young: 'classic' }, unlockedSkins: { racing: ['classic'], breeding: ['classic'], young: ['classic'] }, inventory: { vitamins: 0, energy: 0, antibiotic: 0, tipes: 5, feed_basic: 100, feed_racing: 0, feed_breeding: 0, electrolytes: 0, speed_booster: 0 }, loftFeed: { racing: 'feed_basic', breeding: 'feed_basic', young: 'feed_basic' }, hasAntenna: false, league: 'bronze', leaguePoints: 0, seasonYear: new Date().getFullYear(), seasonNumber: 1, currentRaceIndex: 0, seasonEnd: 0, leagueTable: [], achievements: {}, currentRaceWeather: null, dailyTasks: { date: null, tasks: [] }, loftSort: { racing: { key: 'name', dir: 1 }, breeding: { key: 'name', dir: 1 }, young: { key: 'name', dir: 1 } } }; },
+    startNewGame() { this.state = this.resetGameState(); const playerName = prompt("Witaj w Dobry Lot! Jak się nazywasz?", "Hodowca"); this.state.player.name = playerName || "Hodowca"; this.state.lastFoodConsumption = Date.now(); this.state.lastAgeUpCheck = Date.now(); this.addPigeon(this.createPigeon({name: 'Champion', bloodline: 'janssen', age: 24, gender: 'male', loft: 'racing'})); this.addPigeon(this.createPigeon({name: 'Silver Wings', bloodline: 'vanloon', age: 24, gender: 'female', loft: 'racing'})); this.startNewSeason(); this.generatePublicAuctions(); this.goTo('mainMenu'); },
+    saveGame() { localStorage.setItem('dobryLotSaveData_v4.0', JSON.stringify(this.state)); this.msg('💾 Gra została zapisana!'); },
+    loadGame() {
+        const savedData = localStorage.getItem('dobryLotSaveData_v4.0');
+        if (savedData) {
+            let loadedState = JSON.parse(savedData);
+            this.state = Object.assign(this.resetGameState(), loadedState);
+            if (!this.state.lastAgeUpCheck) this.state.lastAgeUpCheck = Date.now();
+            if (!this.state.lastFoodConsumption) this.state.lastFoodConsumption = Date.now();
+            this.state.pigeons.forEach(p => {
+                if (typeof p.potential === 'undefined') { p.potential = 1 + Math.floor(Math.random() * 5); }
+                if (typeof p.revealedPotential === 'undefined') { p.revealedPotential = 0; }
+                if (typeof p.titles === 'undefined') { p.titles = []; }
+                if (typeof p.hasTipes === 'undefined') { p.hasTipes = false; }
+                if (typeof p.activeSupplements === 'undefined') { p.activeSupplements = {}; }
+            });
+            if (this.state.seasonEnd === 0) { this.startNewSeason(); }
+            if(!this.state.market.publicAuctions || this.state.market.publicAuctions.length === 0) { this.generatePublicAuctions(); }
+            this.goTo('mainMenu'); this.msg('👍 Gra wczytana pomyślnie!');
+        } else { this.msg('Brak zapisanego stanu gry.'); }
+    },
+    gameLoop() {
+        const now = Date.now();
+        if (!this.state.market.nextRefresh || now > this.state.market.nextRefresh) { this.refreshMarket(); this.generatePublicAuctions(); }
+        if (now > (this.state.lastFoodConsumption + this.config.FOOD_CONSUMPTION_INTERVAL_MS)) { this.consumeResources(); }
+        this.checkPlayerAuctions();
+        if (this.state.seasonEnd && now > this.state.seasonEnd) { this.endSeason(); }
+        let pigeonsUpdated = false;
+        if (Math.random() < this.config.DISEASE_CHANCE_PER_TICK) { const healthyPigeons = this.state.pigeons.filter(p => p.status !== 'sick' && !p.retired); if(healthyPigeons.length > 0) { const unluckyPigeon = healthyPigeons[Math.floor(Math.random() * healthyPigeons.length)]; unluckyPigeon.status = 'sick'; this.msg(`W twoim gołębniku wybuchła choroba! ${unluckyPigeon.name} jest chory!`, 'warning'); pigeonsUpdated = true; } }
+        
+        if (now > (this.state.lastAgeUpCheck || 0) + this.config.AGE_UP_INTERVAL_MS) {
+            this.state.pigeons.forEach(p => {
+                if (!p.retired) {
+                    p.age++;
+                    if (p.loft === 'young' && p.age >= this.config.MIN_AGE_OLD) {
+                        const racingCapacity = this.state.pigeons.filter(pi => !pi.retired && pi.loft === 'racing').length;
+                        const maxRacingCapacity = this.state.unlockedLoftPages.racing * this.config.SHELVES_PER_PAGE;
+                        if (racingCapacity < maxRacingCapacity) {
+                            p.loft = 'racing';
+                            this.msg(`${p.name} dojrzał i został przeniesiony do gołębnika lotowego!`);
+                            pigeonsUpdated = true;
+                        } else {
+                            this.msg(`${p.name} jest gotowy do lotów, ale gołębnik lotowy jest pełny!`, 'warning');
+                        }
+                    }
+                }
+            });
+            this.state.lastAgeUpCheck = now;
+        }
+
+        const newlyHatched = []; this.state.eggs = this.state.eggs.filter(egg => { if (now >= egg.hatchTime) { newlyHatched.push(egg); return false; } return true; });
+        if (newlyHatched.length > 0) { newlyHatched.forEach(egg => this.hatchEgg(egg)); }
+        this.state.pigeons.forEach(p => { 
+            if (p.restUntil && now >= p.restUntil) { p.restUntil = null; p.form = Math.min(100, p.form + 20); p.condition = Math.min(100, p.condition + 30); this.msg(`🕊️ ${p.name} jest wypoczęty!`); pigeonsUpdated = true; }
+            if (p.trainingUntil && now >= p.trainingUntil) { this.resolveTraining(p); pigeonsUpdated = true; }
+        });
+        const finishedRaces = []; this.state.racesInProgress = this.state.racesInProgress.filter(race => { if(now >= race.finishTime) { finishedRaces.push(race); return false; } return true; });
+        if(finishedRaces.length > 0) { finishedRaces.forEach(race => this.resolveRace(race)); pigeonsUpdated = true; }
+        if (pigeonsUpdated && document.querySelector('.screen.active')?.id === 'loft') { this.renderLoft(); }
+        if (document.querySelector('.screen.active')?.id === 'market') { this.getElement('marketRefreshTimer').textContent = this.formatTime(this.state.market.nextRefresh - now); }
+        if (document.querySelector('.screen.active')?.id === 'league' && this.getElement('seasonTimer')) { this.getElement('seasonTimer').textContent = this.formatTime(this.state.seasonEnd - now); }
+    },
+    findFirstEmptyShelf(loftType) { const usedShelves = this.state.pigeons.filter(p => p.loft === loftType && p.shelfId !== -1).map(p => p.shelfId); let shelfId = 0; while (usedShelves.includes(shelfId)) { shelfId++; } return shelfId; },
+    addPigeon(pigeon) { pigeon.shelfId = this.findFirstEmptyShelf(pigeon.loft); this.state.pigeons.push(pigeon); },
+    getElement(id) { return document.getElementById(id); },
+    goTo(screenId, context = null) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); this.getElement(screenId)?.classList.add('active'); if(context) this.state.currentLoftType = context; this.refreshActiveScreen(); },
+    refreshActiveScreen() { const activeScreen = document.querySelector('.screen.active'); if (!activeScreen) return; const renderFn = `render${activeScreen.id.charAt(0).toUpperCase() + activeScreen.id.slice(1)}`; if (typeof this[renderFn] === 'function') { this[renderFn](); } this.updateUI(); },
+    updateUI() { const set = (id, c) => { const el = this.getElement(id); if (el) el.innerHTML = c; }; set('moneyFarm', this.state.money); set('goldCoinsFarm', this.state.goldCoins); set('waterFarm', this.state.water); const pInfo = `${this.state.player.name} | Lvl ${this.state.player.level}<div class="xp-bar-container"><div class="xp-bar-fill" style="width: ${Math.min(100, (this.state.player.xp / this.state.player.xpToNextLevel) * 100)}%;"></div></div>`; document.querySelectorAll('.player-info').forEach(el => el.innerHTML = pInfo); },
+    closeModal() { document.querySelectorAll('.modal').forEach(m => m.classList.remove('active')); },
+    msg(text, type = 'info') { const div = document.createElement('div'); div.textContent = text; const bgColor = type === 'success' ? '#4CAF50' : type === 'warning' ? '#ff9800' : '#667eea'; div.style.cssText = `position:fixed;top:20px;left:50%;transform:translateX(-50%);background:${bgColor};color:white;padding:15px 30px;border-radius:10px;z-index:9999;font-weight:bold;box-shadow:0 4px 20px rgba(0,0,0,0.3);text-align:center; transition: all 0.5s; opacity: 1;`; document.body.appendChild(div); setTimeout(() => { div.style.opacity = '0'; div.style.top = '0px'; }, 2500); setTimeout(() => { div.remove(); }, 3000); },
+    playSound(id) { const audio = this.getElement(`audio_${id}`); if(audio) { audio.currentTime = 0; audio.play().catch(()=>{}); } },
+    formatTime(ms) { if (ms <= 0) return "00:00"; const s = Math.floor(ms / 1000); const d = Math.floor(s / 86400); const h = Math.floor((s % 86400) / 3600); const m = Math.floor((s % 3600) / 60); if (d > 0) return `${d}d ${h}h`; if (h > 0) return `${h}h ${m}m`; return `${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; },
+    formatRaceTime(minutes) { const h = Math.floor(minutes / 60); const m = Math.floor(minutes % 60); const s = Math.floor((minutes * 60) % 60); return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; },
+    addPlayerXp(amount) { this.state.player.xp += amount; while(this.state.player.xp >= this.state.player.xpToNextLevel) { this.state.player.level++; this.state.player.xp -= this.state.player.xpToNextLevel; this.state.player.xpToNextLevel = Math.round(this.state.player.xpToNextLevel * 1.5); this.state.money += 1000 * this.state.player.level; this.state.goldCoins += 5; this.msg(`🎉 AWANS NA POZIOM ${this.state.player.level}! (+5 ZM)`, 'success'); this.playSound('levelup'); } this.updateUI(); },
+    createPigeon({name = null, bloodline, age = 0, gender = null, genes = null, perks = [], loft = 'young', parents = null, potential = null}) {
+        const blood = this.config.BLOODLINES[bloodline];
+        let base = { s: 40 + Math.random() * 20, t: 40 + Math.random() * 20, n: 40 + Math.random() * 20 };
+        const pigeonCount = this.state.pigeons.length + 1; const year = new Date().getFullYear();
+        return { id: Date.now() + Math.random(), name: name || 'Młody', bloodline, age, gender: gender || (Math.random() > 0.5 ? 'male' : 'female'), speed: Math.round((genes?.s || base.s) * blood.speed), stamina: Math.round((genes?.t || base.t) * blood.stamina), navigation: Math.round((genes?.n || base.n) * blood.navigation), form: 100, condition: 100, wins: 0, races: 0, perks, retired: false, shelfId: -1, loft, isPaired: false, ringNumber: `PL-01-${year}-${String(pigeonCount).padStart(4, '0')}`, parents: parents, history: [], status: 'healthy', potential: potential || (1 + Math.floor(Math.random() * 5)), revealedPotential: 0, titles: [], hasTipes: false, activeSupplements: {} };
+    },
+    hatchEgg(egg) { if (this.state.pigeons.filter(p => !p.retired && p.loft === 'young').length >= this.state.unlockedLoftPages.young * this.config.SHELVES_PER_PAGE) { this.msg('Gołębnik Młodych jest pełny! Jajo czeka.', 'warning'); this.state.eggs.unshift(egg); return; } this.playSound('hatch'); this.tempHatchling = this.createPigeon({ bloodline: egg.genes.bloodline, genes: {s: egg.genes.s, t: egg.genes.t, n: egg.genes.n}, perks: egg.perks, loft: 'young', parents: egg.parents, potential: egg.potential }); this.getElement('hatchlingDetails').innerHTML = `<div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);"><div class="stat-item"><div class="stat-label">Szybkość</div><div class="stat-value">${this.tempHatchling.speed}</div></div><div class="stat-item"><div class="stat-label">Wytrzymałość</div><div class="stat-value">${this.tempHatchling.stamina}</div></div><div class="stat-item"><div class="stat-label">Nawigacja</div><div class="stat-value">${this.tempHatchling.navigation}</div></div>`; this.getElement('hatchlingPerks').innerHTML = this.tempHatchling.perks.map(perkId => `<div class="info-box" style="text-align:center;"><strong>Cecha: ${this.config.PERKS[perkId].name}</strong><p style="font-size:12px;">${this.config.PERKS[perkId].desc}</p></div>`).join(''); this.getElement('hatchlingNameInput').value = `Młody #${this.state.pigeons.length + 1}`; this.getElement('hatchlingModal').classList.add('active'); },
+    confirmHatchlingName() { this.tempHatchling.name = this.getElement('hatchlingNameInput').value || this.tempHatchling.name; this.addPigeon(this.tempHatchling); this.updateTaskProgress('breed_pigeon', 1); this.tempHatchling = null; this.closeModal(); this.refreshActiveScreen(); },
+    renderMainMenu() {},
+    renderFarm() {
+        const container = this.getElement('farmContainer'); container.innerHTML = '';
+        const buildings = [ { id: 'racing', name: 'Gołębnik Lotowy', icon: '🏆', unlocked: true }, { id: 'breeding', name: this.config.BUILDINGS.breeding.name, icon: '❤️', unlocked: this.state.unlockedBuildings.breeding, cost: this.config.BUILDINGS.breeding.unlockCost }, { id: 'young', name: 'Gołębnik Młodych', icon: '🐣', unlocked: true } ];
+        buildings.forEach(b => {
+            const div = document.createElement('div'); div.className = `building skin-${this.state.buildingSkins[b.id] || 'classic'}`;
+            let content = `<div class="building-icon">${b.icon}</div><div class="building-name">${b.name}</div>`;
+            if (b.unlocked) { div.onclick = () => this.goTo('loft', b.id); } 
+            else { div.classList.add('locked'); content += `<div class="building-cost">🪙 ${b.cost} ZM</div>`; div.onclick = () => this.unlockBuilding(b.id); }
+            div.innerHTML = content; container.appendChild(div);
+        });
+    },
+    unlockBuilding(buildingId) {
+        const building = this.config.BUILDINGS[buildingId]; if (this.state.goldCoins < building.unlockCost) { this.msg('Za mało Złotych Monet!', 'warning'); return; }
+        this.state.goldCoins -= building.unlockCost; this.state.unlockedBuildings[buildingId] = true;
+        this.msg(`🎉 Odblokowano: ${building.name}!`, 'success'); this.playSound('cash');
+        if(buildingId === 'breeding') { this.msg('🎁 W prezencie otrzymujesz parę gołębi rozpłodowych!', 'success'); this.addPigeon(this.createPigeon({name: 'Ares', bloodline: 'janssen', age: 30, gender: 'male', loft: 'breeding', genes: {s: 60, t: 60, n: 60}})); this.addPigeon(this.createPigeon({name: 'Hera', bloodline: 'vanloon', age: 30, gender: 'female', loft: 'breeding', genes: {s: 60, t: 60, n: 60}})); }
+        this.renderFarm(); this.updateUI();
+    },
+    renderLoft() {
+        const loftType = this.state.currentLoftType;
+        const loftTitles = { racing: 'Gołębnik Lotowy', breeding: 'Gołębnik Rozpłodowy', young: 'Gołębnik Młodych' };
+        this.getElement('loftTitle').textContent = loftTitles[loftType];
+        
+        const controls = this.getElement('loftControls');
+        const currentFeed = this.config.ITEMS[this.state.loftFeed[loftType]];
+        controls.innerHTML = `
+            <div title="Zarządzaj żywieniem" class="feeders-drinkers" onclick="DobryLotGame.openFeedModal()">🥣💧</div>
+            <span>Sortuj:</span>
+            <button class="sort-btn ${this.state.loftSort[loftType].key === 'name' ? 'active' : ''}" onclick="DobryLotGame.sortLoft('name')">Imię</button>
+            <button class="sort-btn ${this.state.loftSort[loftType].key === 'speed' ? 'active' : ''}" onclick="DobryLotGame.sortLoft('speed')">Szybkość</button>
+            <button class="sort-btn ${this.state.loftSort[loftType].key === 'stamina' ? 'active' : ''}" onclick="DobryLotGame.sortLoft('stamina')">Wytrz.</button>
+            <button class="sort-btn ${this.state.loftSort[loftType].key === 'navigation' ? 'active' : ''}" onclick="DobryLotGame.sortLoft('navigation')">Nawig.</button>
+            <button class="sort-btn ${this.state.loftSort[loftType].key === 'age' ? 'active' : ''}" onclick="DobryLotGame.sortLoft('age')">Wiek</button>
+            <button class="sort-btn ${this.state.loftSort[loftType].key === 'potential' ? 'active' : ''}" onclick="DobryLotGame.sortLoft('potential')">Potencjał</button>
+        `;
+
+        const breedingSection = this.getElement('breedingSection');
+        if (loftType === 'breeding' && this.state.unlockedBuildings.breeding) { breedingSection.style.display = 'block'; this.renderBreedingInterface(); } else { breedingSection.style.display = 'none'; }
+        
+        const grid = this.getElement('loftGrid'), pageIndicator = this.getElement('loftPageIndicator'), nextBtnContainer = this.getElement('nextLoftPageContainer');
+        grid.innerHTML = '';
+        
+        const sortOptions = this.state.loftSort[loftType];
+        let pigeons = this.state.pigeons.filter(p => !p.retired && p.loft === loftType);
+        pigeons.sort((a, b) => {
+            const valA = sortOptions.key === 'name' ? a[sortOptions.key].toLowerCase() : a[sortOptions.key];
+            const valB = sortOptions.key === 'name' ? b[sortOptions.key].toLowerCase() : b[sortOptions.key];
+            if (valA > valB) return sortOptions.dir;
+            if (valA < valB) return -sortOptions.dir;
+            return 0;
+        });
+        
+        const currentPage = this.state.currentLoftPage[loftType]; const unlockedPages = this.state.unlockedLoftPages[loftType];
+        const startIndex = (currentPage - 1) * this.config.SHELVES_PER_PAGE;
+        for (let i = 0; i < this.config.SHELVES_PER_PAGE; i++) {
+            const shelf = document.createElement('div');
+            shelf.className = 'loft-shelf';
+            const pigeonOnShelf = pigeons[startIndex + i];
+            
+            if (pigeonOnShelf) {
+                const p = pigeonOnShelf;
+                shelf.classList.add('occupied'); let status = '✅ Gotowy'; const now = Date.now();
+                if (p.isPaired) status = `❤️ W parze`;
+                else if (p.status === 'sick') status = `<span class="pigeon-status sick">🤒 Chory</span>`;
+                else if (p.restUntil && p.restUntil > now) status = `😴 Odpoczywa (${this.formatTime(p.restUntil - now)})`;
+                else if (p.trainingUntil && p.trainingUntil > now) status = `🏋️ Trenuje (${this.formatTime(p.trainingUntil - now)})`;
+                else if (p.isRacing) status = `🏆 W wyścigu`;
+                shelf.innerHTML = `<div class="pigeon-icon">${this.config.BLOODLINES[p.bloodline].icon}</div><div class="pigeon-name">${p.name}</div><div class="pigeon-status">${status}</div>`;
+                shelf.onclick = () => this.showPigeonDetails(p.id);
+            } else {
+                shelf.classList.add('empty');
+                shelf.innerHTML = `<div class="pigeon-icon" style="font-size:2em;">➕</div><div>Wolne miejsce</div>`;
+            }
+            grid.appendChild(shelf);
+        }
+
+        pageIndicator.textContent = `Strona ${currentPage} / ${unlockedPages} (Max: ${this.config.MAX_LOFT_PAGES})`; this.getElement('prevLoftPageBtn').disabled = currentPage <= 1;
+        if (currentPage < unlockedPages) { nextBtnContainer.innerHTML = `<button class="btn" onclick="DobryLotGame.goToNextLoftPage()">Następna</button>`;
+        } else if (unlockedPages < this.config.MAX_LOFT_PAGES) { nextBtnContainer.innerHTML = `<button class="btn btn-unlock" onclick="DobryLotGame.unlockNextLoftPage()">🔒 Odblokuj (${this.config.LOFT_PAGE_UNLOCK_COST_GOLD} ZM)</button>`;
+        } else { nextBtnContainer.innerHTML = `<button class="btn" disabled>Następna</button>`; }
+    },
+    sortLoft(key) {
+        const loftType = this.state.currentLoftType;
+        if (this.state.loftSort[loftType].key === key) {
+            this.state.loftSort[loftType].dir *= -1;
+        } else {
+            this.state.loftSort[loftType].key = key;
+            this.state.loftSort[loftType].dir = (key === 'name' || key === 'age') ? 1 : -1;
+        }
+        this.renderLoft();
+    },
+    renderBreedingInterface() {
+        const container = this.getElement('breedingCellsContainer'); container.innerHTML = ''; const now = Date.now();
+        for (let i = 0; i < this.config.BREEDING_CELLS; i++) {
+            const cell = document.createElement('div'); cell.className = 'breeding-cell'; const pair = this.state.breedingPairs[i];
+            if (pair) {
+                const male = this.state.pigeons.find(p => p.id === pair.maleId); const female = this.state.pigeons.find(p => p.id === pair.femaleId);
+                let actionButton;
+                if(pair.readyTime && now < pair.readyTime) { actionButton = `<button class="btn" disabled>Odpoczynek: ${this.formatTime(pair.readyTime - now)}</button>`;
+                } else { actionButton = `<button class="btn" onclick="DobryLotGame.breedPair(${i})">Paruj (${this.config.BREEDING_COST} zł)</button>`; }
+                cell.innerHTML = `<div class="breeding-cell-pair"><div class="breeding-cell-pigeon">♂️ ${male.name}</div><div>❤️</div><div class="breeding-cell-pigeon">♀️ ${female.name}</div></div><div>${actionButton}<button class="btn" onclick="DobryLotGame.unpairPigeons(${i})">Rozdziel</button></div>`;
+            } else { cell.innerHTML = `<button class="btn" onclick="DobryLotGame.startPairing(${i})">➕ Stwórz parę</button>`; }
+            container.appendChild(cell);
+        }
+        const eggsList = this.getElement('eggsList'); let eggsHTML = this.state.eggs.length === 0 ? '<p style="text-align:center;color:#666;">Brak jaj</p>' : '';
+        this.state.eggs.forEach(egg => { eggsHTML += `<div>🥚 Jajo wykluje się za: ${this.formatTime(egg.hatchTime - now)}</div>`; });
+        eggsList.innerHTML = eggsHTML;
+    },
+    startPairing(cellIndex) { this.tempPairing = { cellIndex, maleId: null, femaleId: null }; this.selectPigeonForPairing('male'); },
+    selectPigeonForPairing(gender) {
+        const available = this.state.pigeons.filter(p => p.loft === 'breeding' && p.gender === gender && !p.isPaired);
+        const title = this.getElement('selectionTitle'); const content = this.getElement('selectionContent');
+        title.textContent = `Wybierz ${gender === 'male' ? 'samca' : 'samicę'} do pary`;
+        let html = available.length > 0 ? '' : '<p>Brak dostępnych gołębi.</p>';
+        available.forEach(p => { html += `<div class="pigeon-card" style="cursor:pointer;" onclick="DobryLotGame.confirmPigeonForPairing(${p.id}, '${gender}')"><strong>${p.name}</strong> (S:${p.speed} W:${p.stamina} N:${p.navigation})</div>`; });
+        html += `<button class="btn" onclick="DobryLotGame.closeModal()" style="width:100%;margin-top:10px;">Anuluj</button>`;
+        content.innerHTML = html; this.getElement('selectionModal').classList.add('active');
+    },
+    confirmPigeonForPairing(pigeonId, gender) { this.tempPairing[`${gender}Id`] = pigeonId; if (gender === 'male') { this.selectPigeonForPairing('female'); } else { this.confirmPairing(); } },
+    confirmPairing() {
+        const { cellIndex, maleId, femaleId } = this.tempPairing;
+        if (maleId && femaleId) {
+            this.state.breedingPairs[cellIndex] = { maleId, femaleId, readyTime: 0 };
+            [maleId, femaleId].forEach(id => { const p = this.state.pigeons.find(p => p.id === id); if(p) p.isPaired = true; });
+            this.tempPairing = null; this.closeModal(); this.renderLoft();
+        }
+    },
+    breedPair(cellIndex) {
+        const pair = this.state.breedingPairs[cellIndex];
+        if (pair.readyTime && Date.now() < pair.readyTime) { this.msg('Ta para musi odpocząć.'); return; }
+        const eggsToLay = (Math.random() < this.config.TWO_EGGS_CHANCE) ? 2 : 1;
+        const youngLoftCapacity = this.state.unlockedLoftPages.young * this.config.SHELVES_PER_PAGE;
+        const youngPigeonsCount = this.state.pigeons.filter(p=>!p.retired && p.loft === 'young').length;
+        if(youngPigeonsCount + eggsToLay > youngLoftCapacity) { this.msg('Gołębnik Młodych jest za mały na nowe pisklęta!', 'warning'); return; }
+        if (this.state.money < this.config.BREEDING_COST) { this.msg('Za mało pieniędzy!', 'warning'); return; }
+        this.state.money -= this.config.BREEDING_COST; this.playSound('cash');
+        const p1 = this.state.pigeons.find(p => p.id === pair.maleId); const p2 = this.state.pigeons.find(p => p.id === pair.femaleId);
+        
+        let newPotential = 1 + Math.floor(Math.random() * 5);
+        if (this.state.loftFeed.breeding === 'feed_breeding' && Math.random() < this.config.HIGHER_POTENTIAL_CHANCE) {
+            newPotential = Math.min(5, newPotential + 1);
+            this.msg("Karma rozpłodowa zadziałała! Szansa na lepszy potencjał!", "success");
+        }
+
+        for (let i = 0; i < eggsToLay; i++) {
+            let genes = { s: (p1.speed + p2.speed) / 2 + (Math.random() * 10 - 5), t: (p1.stamina + p2.stamina) / 2 + (Math.random() * 10 - 5), n: (p1.navigation + p2.navigation) / 2 + (Math.random() * 10 - 5), bloodline: Math.random() > 0.5 ? p1.bloodline : p2.bloodline };
+            let perks = [...new Set([...p1.perks, ...p2.perks])].filter(() => Math.random() < 0.5);
+            if (Math.random() < 0.1) perks.push(Object.keys(this.config.PERKS)[Math.floor(Math.random() * Object.keys(this.config.PERKS).length)]);
+            this.state.eggs.push({ id: Date.now() + i, hatchTime: Date.now() + this.config.EGG_HATCH_DURATION_MS, genes, perks: [...new Set(perks)], parents: { male: p1.id, female: p2.id }, potential: newPotential });
+        }
+        pair.readyTime = Date.now() + this.config.BREEDING_COOLDOWN_MS;
+        this.msg(`Para złożyła ${eggsToLay} ${eggsToLay > 1 ? 'jajka' : 'jajko'}!`, 'success');
+        this.renderBreedingInterface();
+    },
+    unpairPigeons(cellIndex) {
+        const pair = this.state.breedingPairs[cellIndex];
+        if(pair) {
+            [pair.maleId, pair.femaleId].forEach(id => { const p = this.state.pigeons.find(p => p.id === id); if (p) p.isPaired = false; });
+            this.state.breedingPairs[cellIndex] = null; this.renderLoft();
+        }
+    },
+    goToPrevLoftPage() { const type = this.state.currentLoftType; if (this.state.currentLoftPage[type] > 1) { this.state.currentLoftPage[type]--; this.renderLoft(); } },
+    goToNextLoftPage() { const type = this.state.currentLoftType; if (this.state.currentLoftPage[type] < this.state.unlockedLoftPages[type]) { this.state.currentLoftPage[type]++; this.renderLoft(); } },
+    unlockNextLoftPage() {
+        const type = this.state.currentLoftType; if (this.state.unlockedLoftPages[type] >= this.config.MAX_LOFT_PAGES) return;
+        const cost = this.config.LOFT_PAGE_UNLOCK_COST_GOLD; if (this.state.goldCoins < cost) { this.msg(`Potrzebujesz ${cost} Złotych Monet!`, 'warning'); return; }
+        this.state.goldCoins -= cost; this.state.unlockedLoftPages[type]++; this.state.currentLoftPage[type] = this.state.unlockedLoftPages[type];
+        this.msg('🎉 Nowa strona gołębnika odblokowana!', 'success'); this.playSound('cash'); this.renderLoft(); this.updateUI();
+    },
+    showPigeonDetails(id) { 
+        const p = this.state.pigeons.find(p => p.id === id); if (!p) return;
+        const loftTitles = { racing: 'Lotowy', breeding: 'Rozpłodowy', young: 'Młodych' };
+        
+        let potentialHTML = '<div class="pigeon-potential">'; for (let i = 1; i <= 5; i++) { if (i <= p.potential) { potentialHTML += (i <= p.revealedPotential) ? '★' : '☆'; } else { potentialHTML += '<span style="color: #ddd;">☆</span>'; } } potentialHTML += '</div>';
+        let titlesHTML = p.titles.map(titleId => { const title = this.config.PIGEON_TITLES[titleId]; return `<span class="pigeon-title-badge">${title.name}</span>`; }).join(' ');
+        
+        let supplementsHTML = '';
+        if(p.activeSupplements.speed_booster) supplementsHTML += `<div class="info-box" style="background: #e8f5e9; border-color: #4CAF50;"><strong>Aktywny:</strong> Booster Szybkości (+5 do Szybkości na 1 lot)</div>`;
+        if(p.activeSupplements.electrolytes) supplementsHTML += `<div class="info-box" style="background: #e3f2fd; border-color: #2196F3;"><strong>Aktywny:</strong> Elektrolity (-25% utraty kondycji na 1 lot)</div>`;
+
+        this.getElement('modalPigeonName').innerHTML = `${p.gender === 'male' ? '♂️' : '♀️'} ${p.name} ${titlesHTML}`;
+        let detailsHTML = `<div class="modal-tabs"><div class="modal-tab active" onclick="DobryLotGame.switchModalTab(this, 'tab-info')">Info</div><div class="modal-tab" onclick="DobryLotGame.switchModalTab(this, 'tab-supplements')">Suplementy</div><div class="modal-tab" onclick="DobryLotGame.switchModalTab(this, 'tab-pedigree')">Rodowód</div><div class="modal-tab" onclick="DobryLotGame.switchModalTab(this, 'tab-history')">Historia</div></div><div id="tab-info" class="modal-tab-content active"><div class="info-box"><div style="display:flex; justify-content: space-between; align-items: center;"><div><p><strong>Obrączka:</strong> ${p.ringNumber}</p><p><strong>Gołębnik:</strong> ${loftTitles[p.loft]}</p><p><strong>Linia:</strong> ${this.config.BLOODLINES[p.bloodline].name}</p><p><strong>Wiek:</strong> ${Math.floor(p.age)} miesięcy</p></div><div><strong>Potencjał:</strong>${potentialHTML}</div></div></div>${supplementsHTML}<div class="stats-grid"><div class="stat-item"><div class="stat-label">Wyścigi</div><div class="stat-value">${p.races}</div></div><div class="stat-item"><div class="stat-label">Wygrane</div><div class="stat-value">${p.wins}</div></div><div class="stat-item"><div class="stat-label">Forma</div><div class="stat-value">${p.form}%</div></div><div class="stat-item"><div class="stat-label">Kondycja</div><div class="stat-value">${p.condition}%</div></div></div><h4>Statystyki (Max: ${this.config.POTENTIAL_STAT_CAPS[p.potential]}):</h4><p>🚀 Szybkość: ${p.speed}</p><div class="stat-bar"><div class="stat-fill" style="width: ${p.speed / this.config.POTENTIAL_STAT_CAPS[p.potential] * 100}%"></div></div><p>💪 Wytrzymałość: ${p.stamina}</p><div class="stat-bar"><div class="stat-fill" style="width: ${p.stamina / this.config.POTENTIAL_STAT_CAPS[p.potential] * 100}%"></div></div><p>🧭 Nawigacja: ${p.navigation}</p><div class="stat-bar"><div class="stat-fill" style="width: ${p.navigation / this.config.POTENTIAL_STAT_CAPS[p.potential] * 100}%"></div></div>`;
+        
+        if(p.loft === 'racing' || p.loft === 'young') {
+            detailsHTML += `<hr style="margin: 20px 0;"><div class="info-box" style="text-align:center;"><strong>System Lotowy</strong><p>Status Tipes: ${p.hasTipes ? '✅ Przypisany' : '❌ Brak'}</p>${!p.hasTipes ? `<button class="btn" onclick="DobryLotGame.assignTipes(${p.id})">Przypisz Tipes (Posiadasz: ${this.state.inventory.tipes})</button>` : ''}</div>`;
+        }
+
+        detailsHTML += `</div><div id="tab-supplements" class="modal-tab-content"></div><div id="tab-pedigree" class="modal-tab-content"></div><div id="tab-history" class="modal-tab-content"></div>`;
+        this.getElement('modalPigeonDetails').innerHTML = detailsHTML;
+        
+        const supplementsList = Object.entries(this.config.ITEMS).filter(([key, item]) => item.type === 'supplement').map(([key, item]) => `
+            <div class="item-row">
+                <div><strong>${item.icon} ${item.name}</strong> (Posiadasz: ${this.state.inventory[key] || 0})<br><small>${item.desc}</small></div>
+                <button class="btn" onclick="DobryLotGame.useSupplement('${key}', ${p.id})" ${(this.state.inventory[key] || 0) === 0 ? 'disabled' : ''}>Użyj</button>
+            </div>`).join('');
+        this.getElement('tab-supplements').innerHTML = `<h4>Dostępne Suplementy</h4><p>Suplementy działają tylko na jeden, najbliższy lot.</p>` + supplementsList;
+        
+        let pedigreeHTML = '<h4>Rodzice:</h4>'; if (p.parents) { const father = this.state.pigeons.find(parent => parent.id === p.parents.male); const mother = this.state.pigeons.find(parent => parent.id === p.parents.female); pedigreeHTML += `<p>♂️ Ojciec: ${father ? father.name : 'Nieznany'}</p><p>♀️ Matka: ${mother ? mother.name : 'Nieznany'}</p>`; } else { pedigreeHTML += '<p>Brak danych o pochodzeniu.</p>'; } this.getElement('tab-pedigree').innerHTML = pedigreeHTML;
+        let historyHTML = '<h4>Kariera:</h4>'; if (p.history.length > 0) { p.history.slice().reverse().forEach(entry => { historyHTML += `<div class="history-item">${entry.type === 'race' ? `🏆 Wyścig: ${entry.name} - <strong>${entry.place}. miejsce</strong>` : `🏋️ Trening: ${entry.name}`} (${entry.distance} km)</div>`; }); } else { historyHTML += '<p>Ten gołąb jeszcze nie brał udziału w lotach.</p>'; } this.getElement('tab-history').innerHTML = historyHTML;
+        
+        const actionsContainer = this.getElement('pigeonActions'); actionsContainer.innerHTML = ''; const isIdle = !p.isRacing && !p.trainingUntil && !p.restUntil && !p.isPaired && p.status === 'healthy'; if (isIdle) { const lofts = { racing: 'Do Lotowego', breeding: 'Do Rozpłodowego', young: 'Do Młodych' }; Object.keys(lofts).forEach(loftKey => { if (p.loft !== loftKey && (loftKey === 'racing' || this.state.unlockedBuildings[loftKey])) { const btn = document.createElement('button'); btn.className = 'btn'; btn.textContent = lofts[loftKey]; btn.onclick = () => this.movePigeon(p.id, loftKey); actionsContainer.appendChild(btn); } }); 
+        
+        if (p.loft === 'racing' || p.loft === 'young') {
+            const auctionBtn = document.createElement('button'); auctionBtn.className = 'btn btn-unlock'; auctionBtn.textContent = 'Wystaw na Aukcję'; auctionBtn.onclick = () => this.listPigeonOnAuction(p.id); actionsContainer.appendChild(auctionBtn);
+        }
+        
+        if (p.loft !== 'young') { const sellPrice = Math.round((p.speed + p.stamina + p.navigation) * 5 * (p.potential / 2) + p.titles.length * 1000); const sellBtn = document.createElement('button'); sellBtn.className = 'btn btn-sell'; sellBtn.textContent = `Sprzedaj (Systemowi) za ${sellPrice} zł`; sellBtn.onclick = () => this.sellPigeon(p.id, sellPrice); actionsContainer.appendChild(sellBtn); } }
+        this.getElement('pigeonModal').classList.add('active');
+    },
+    switchModalTab(tabElement, tabId) {
+        tabElement.parentElement.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+        tabElement.parentElement.parentElement.querySelectorAll('.modal-tab-content').forEach(c => c.classList.remove('active'));
+        tabElement.classList.add('active');
+        this.getElement(tabId).classList.add('active');
+    },
+    movePigeon(pigeonId, targetLoft) { const p = this.state.pigeons.find(p => p.id === pigeonId); if (!p) return; const currentCapacity = this.state.pigeons.filter(pi => !pi.retired && pi.loft === targetLoft).length; const maxCapacity = this.state.unlockedLoftPages[targetLoft] * this.config.SHELVES_PER_PAGE; if (currentCapacity >= maxCapacity) { this.msg('Docelowy gołębnik jest pełny!', 'warning'); return; } p.loft = targetLoft; p.shelfId = this.findFirstEmptyShelf(targetLoft); this.msg(`${p.name} został przeniesiony.`, 'success'); this.closeModal(); this.renderLoft(); },
+    sellPigeon(pigeonId, price) { if (confirm(`Czy na pewno chcesz sprzedać tego gołębia za ${price} zł? To jest sprzedaż do systemu, nie na aukcję.`)) { this.state.pigeons = this.state.pigeons.filter(p => p.id !== pigeonId); this.state.money += price; this.msg('Gołąb został sprzedany.', 'success'); this.playSound('cash'); this.closeModal(); this.refreshActiveScreen(); this.updateUI(); } },
+    renderMarket() {
+        this.getElement('marketRefreshTimer').textContent = this.formatTime(this.state.market.nextRefresh - Date.now());
+        const list = this.getElement('marketList'); list.innerHTML = '';
+        if(this.state.market.offers.length === 0) { list.innerHTML = '<p>Brak ofert na rynku. Sprawdź później.</p>'; return; }
+        this.state.market.offers.forEach(offer => {
+            const p = offer.pigeon; const card = document.createElement('div'); card.className = 'pigeon-card';
+            card.innerHTML = `<div style="cursor:default;"><strong>${p.gender === 'male' ? '♂️' : '♀️'} ${p.name}</strong> <span class="badge" style="background-color:#e91e63; color:white;">${this.config.BLOODLINES[p.bloodline].name}</span></div><div style="font-size: 12px; margin: 5px 0;">S: ${p.speed}, W: ${p.stamina}, N: ${p.navigation} | Potencjał: ${'<span class="pigeon-potential">' + '★'.repeat(p.potential) + '</span>'}</div><button class="btn" onclick="DobryLotGame.buyFromMarket(${offer.id})">Kup (${offer.price} zł)</button>`;
+            list.appendChild(card);
+        });
+        this.renderAuctions();
+    },
+    refreshMarket() {
+        this.state.market.offers = []; const numOffers = 2 + Math.floor(Math.random() * 4);
+        for (let i = 0; i < numOffers; i++) {
+            const bloodlineKeys = Object.keys(this.config.BLOODLINES); const randomBloodline = bloodlineKeys[Math.floor(Math.random() * bloodlineKeys.length)];
+            const pigeon = this.createPigeon({bloodline: randomBloodline, age: 12 + Math.random() * 24, loft: 'racing' });
+            const price = Math.round((pigeon.speed + pigeon.stamina + pigeon.navigation) * (8 + Math.random() * 4) * (pigeon.potential / 2));
+            this.state.market.offers.push({ id: pigeon.id, pigeon, price });
+        }
+        this.state.market.nextRefresh = Date.now() + this.config.MARKET_REFRESH_INTERVAL_MS;
+        if (document.querySelector('.screen.active')?.id === 'market') { this.renderMarket(); }
+    },
+    buyFromMarket(offerId) { const offerIndex = this.state.market.offers.findIndex(o => o.id === offerId); if (offerIndex === -1) return; const offer = this.state.market.offers[offerIndex]; const currentCapacity = this.state.pigeons.filter(p=>!p.retired && (p.loft === 'racing' || p.loft === 'young')).length; const maxCapacity = (this.state.unlockedLoftPages.racing + this.state.unlockedLoftPages.young) * this.config.SHELVES_PER_PAGE; if(currentCapacity >= maxCapacity) { this.msg('Gołębniki są pełne!', 'warning'); return; } if (this.state.money < offer.price) { this.msg('Za mało pieniędzy!', 'warning'); return; } this.state.money -= offer.price; this.addPigeon(offer.pigeon); this.state.market.offers.splice(offerIndex, 1); this.updateTaskProgress('buy_market', 1); this.msg('Kupiono gołębia z rynku!', 'success'); this.playSound('cash'); this.renderMarket(); this.updateUI(); },
+    renderRaces() {
+        const list = this.getElement('racesList'); if (!list) return; list.innerHTML = '';
+        if (!this.state.hasAntenna) {
+            list.innerHTML = `<div class="info-box warning-box" style="text-align:center;"><h3><span style="font-size: 3em;">📡</span><br>Brak Anteny Lotowej!</h3><p>Aby brać udział w lotach, musisz najpierw zakupić antenę w sklepie.</p><button class="btn" onclick="DobryLotGame.goTo('shop')">Idź do Sklepu</button></div>`;
+            return;
+        }
+        const { currentRaceIndex } = this.state; const schedule = this.config.SEASON_RACE_SCHEDULE;
+        if (currentRaceIndex >= schedule.length) { list.innerHTML = '<div class="info-box"><p style="text-align:center;"><strong>Wszystkie loty w tym sezonie zostały zakończone!</strong><br>Poczekaj na nowy sezon, aby kontynuować rywalizację.</p></div>'; return; }
+        const race = schedule[currentRaceIndex];
+        let eligible, raceCategory;
+        if (race.type === 'young') { raceCategory = 'Gołębie Młode'; eligible = this.state.pigeons.filter(p => p.loft === 'young' && p.status === 'healthy' && p.hasTipes && Math.floor(p.age) >= this.config.MIN_AGE_YOUNG && !p.restUntil && !p.trainingUntil && !p.isRacing && !p.retired).length;
+        } else { raceCategory = race.type === 'marathon' ? 'Maraton (Gołębie Stare)' : 'Gołębie Stare'; eligible = this.state.pigeons.filter(p => p.loft === 'racing' && p.status === 'healthy' && p.hasTipes && Math.floor(p.age) >= this.config.MIN_AGE_OLD && !p.restUntil && !p.trainingUntil && !p.isRacing && !p.retired).length; }
+        const option = document.createElement('div'); option.className = 'pigeon-card'; option.style.cursor = 'default';
+        option.innerHTML = `<h3>Następny Lot: ${race.name}</h3><h4>Dystans: ${race.distance} km</h4><p><strong>Kategoria:</strong> ${raceCategory}</p><p>🏆 Nagroda (1. miejsce): ${race.prize} zł</p><p>✅ Dostępnych gołębi do lotu (z tipesem): ${eligible}</p><button class="btn" onclick="DobryLotGame.selectPigeonsForRace()" ${eligible === 0 ? 'disabled' : ''}>WEŹ UDZIAŁ W LOCIE</button>`;
+        list.appendChild(option);
+    },
+    renderShop() { 
+        const shopItems = this.getElement('shopItems'); if(!shopItems) return; shopItems.innerHTML = ''; 
+        Object.entries(this.config.ITEMS).forEach(([key, item]) => {
+            if (key === 'antenna' && this.state.hasAntenna) return;
+            const itemDiv = document.createElement('div'); itemDiv.className = 'stat-item'; itemDiv.style.cursor = 'pointer'; 
+            const price = item.isGoldCoin ? `🪙 ${item.cost} ZM` : `💰 ${item.cost} zł`;
+            const priceColor = item.isGoldCoin ? 'var(--gold-coin-color)' : 'var(--primary-color)';
+            itemDiv.innerHTML = `<div style="font-size: 40px;">${item.icon}</div><h4>${item.name}</h4><p style="color: ${priceColor}; font-weight: bold;">${price}</p><small>${item.desc}</small>`;
+            itemDiv.onclick = () => this.buyItem(key); 
+            shopItems.appendChild(itemDiv); 
+        }); 
+        Object.entries(this.config.BLOODLINES).forEach(([key, bloodline]) => { const item = document.createElement('div'); item.className = 'stat-item'; item.style.cursor = 'pointer'; item.onclick = () => this.buyPigeon(key); item.innerHTML = `<div style="font-size: 40px;">${bloodline.icon}</div><h4>${bloodline.name}</h4><p style="color: #e91e63; font-weight: bold;">${bloodline.cost} zł</p>`; shopItems.appendChild(item); }); 
+        this.renderPremiumShop(); // DODANE DLA PŁATNOŚCI
+    },
+    buyItem(itemId) { 
+        const item = this.config.ITEMS[itemId];
+        if (item.isGoldCoin) {
+            if (this.state.goldCoins < item.cost) { this.msg('Za mało Złotych Monet!', 'warning'); return; }
+            this.state.goldCoins -= item.cost;
+        } else {
+            if (this.state.money < item.cost) { this.msg('Za mało pieniędzy!', 'warning'); return; }
+            this.state.money -= item.cost;
+        }
+        if (itemId === 'antenna') { this.state.hasAntenna = true; this.msg(`Kupiono: ${item.name}! Możesz teraz brać udział w lotach.`, 'success');
+        } else { this.state.inventory[itemId] = (this.state.inventory[itemId] || 0) + (item.type === 'feed' ? 100 : 1); this.msg(`Kupiono: ${item.name}!`, 'success'); }
+        this.playSound('cash'); 
+        if (document.querySelector('.screen.active')?.id === 'shop') { this.renderShop(); }
+        this.updateUI(); 
+    },
+    assignTipes(pigeonId) {
+        const p = this.state.pigeons.find(p => p.id === pigeonId);
+        if (p && !p.hasTipes) {
+            if (this.state.inventory.tipes > 0) {
+                this.state.inventory.tipes--;
+                p.hasTipes = true;
+                this.msg(`Przypisano Tipes do gołębia ${p.name}.`, 'success');
+                this.showPigeonDetails(p.id);
+                this.updateUI();
+            } else { this.msg('Nie masz więcej Tipesów! Kup je w sklepie.', 'warning'); }
+        }
+    },
+    renderInventory() { const list = this.getElement('inventoryList'); list.innerHTML = ''; Object.entries(this.config.ITEMS).forEach(([key, item]) => { if(key === 'antenna') return; const count = this.state.inventory[key] || 0; const itemDiv = document.createElement('div'); itemDiv.className = 'item-row'; itemDiv.innerHTML = `<div><strong>${item.icon} ${item.name}</strong> (Posiadasz: ${count}${item.type === 'feed' ? ' kg' : ''})<br><small>${item.desc}</small></div>${item.type === 'consumable' ? `<button class="btn" onclick="DobryLotGame.useItem('${key}')" ${count === 0 ? 'disabled' : ''}>Użyj</button>` : ''}`; list.appendChild(itemDiv); }); },
+    useItem(itemId) { if (this.state.inventory[itemId] < 1) return; switch(itemId) { case 'vitamins': this.state.pigeons.forEach(p => p.condition = Math.min(100, p.condition + 5)); this.msg('Wszystkie gołębie otrzymały witaminy!', 'success'); break; case 'energy': this.state.pigeons.forEach(p => p.form = Math.min(100, p.form + 5)); this.msg('Wszystkie gołębie otrzymały odżywkę!', 'success'); break; case 'antibiotic': const sickPigeon = this.state.pigeons.find(p => p.status === 'sick'); if (sickPigeon) { sickPigeon.status = 'healthy'; this.msg(`${sickPigeon.name} został wyleczony!`, 'success'); } else { this.msg('Żaden z twoich gołębi nie jest chory.', 'info'); this.state.inventory[itemId]++; return; } break; } this.state.inventory[itemId]--; this.renderInventory(); this.updateUI(); },
+    buyPigeon(bloodlineKey) { const currentCapacity = this.state.pigeons.filter(p=>!p.retired && (p.loft === 'racing' || p.loft === 'young')).length; const maxCapacity = (this.state.unlockedLoftPages.racing + this.state.unlockedLoftPages.young) * this.config.SHELVES_PER_PAGE; if(currentCapacity >= maxCapacity) { this.msg('Gołębniki są pełne!', 'warning'); return; } const bloodline = this.config.BLOODLINES[bloodlineKey]; if (this.state.money < bloodline.cost) { this.msg('Za mało pieniędzy!'); return; } this.state.money -= bloodline.cost; this.playSound('cash'); const newPigeon = this.createPigeon({bloodline: bloodlineKey, age: 12}); newPigeon.loft = newPigeon.age < this.config.MIN_AGE_OLD ? 'young' : 'racing'; this.addPigeon(newPigeon); this.updateUI(); this.msg(`✅ Kupiono gołębia! Trafił do Gołębnika ${newPigeon.loft === 'young' ? 'Młodych' : 'Lotowego'}.`); },
+    renderTraining() { const list = this.getElement('trainingList'); if(!list) return; list.innerHTML = ''; this.config.TRAINING_SESSIONS.forEach(session => { const eligible = this.state.pigeons.filter(p => p.loft === 'racing' && p.status === 'healthy' && Math.floor(p.age) >= session.min_age && !p.restUntil && !p.trainingUntil && !p.isRacing && !p.retired).length; const card = document.createElement('div'); card.className = 'pigeon-card'; card.style.cursor = 'default'; card.innerHTML = `<h4>${session.name} - ${session.distance} km</h4><p>🕒 Czas: ${this.formatTime(session.duration_ms)} | ⭐ XP: ${session.xp}</p><p>✅ Dostępnych gołębi: ${eligible}</p><button class="btn" onclick="DobryLotGame.selectPigeonsForTraining('${session.id}')" ${eligible === 0 ? 'disabled' : ''}>WYBIERZ GOŁĘBIE</button>`; list.appendChild(card); });},
+    selectPigeonsForTraining(sessionId) { this.state.selectedForTraining = []; this.state.currentTraining = this.config.TRAINING_SESSIONS.find(s => s.id === sessionId); const modal = this.getElement('selectionModal'); const title = this.getElement('selectionTitle'); const content = this.getElement('selectionContent'); const eligible = this.state.pigeons.filter(p => p.loft === 'racing' && p.status === 'healthy' && Math.floor(p.age) >= this.state.currentTraining.min_age && !p.restUntil && !p.trainingUntil && !p.isRacing && !p.retired); title.textContent = `Trening: ${this.state.currentTraining.name}`; content.innerHTML = `<div class="info-box"><p>Wybierz gołębie do wysłania na trening.</p></div><div id="trainingSelectionList"></div><div style="text-align:center; margin-top:10px;"><button class="btn" onclick="DobryLotGame.selectAllForTraining(true)">Zaznacz wszystkie</button> <button class="btn" onclick="DobryLotGame.selectAllForTraining(false)">Odznacz wszystkie</button></div><hr style="margin:15px 0;"><button class="btn" onclick="DobryLotGame.confirmTrainingSelection()" style="width: 100%;" id="confirmTrainingBtn" disabled>ROZPOCZNIJ TRENING</button><button class="btn" onclick="DobryLotGame.closeModal()" style="width: 100%; margin-top: 10px;">ANULUJ</button>`; modal.classList.add('active'); this.renderTrainingSelection(eligible); },
+    renderTrainingSelection(eligible) { const list = document.getElementById('trainingSelectionList'); list.innerHTML = ''; eligible.forEach(p => { const card = document.createElement('div'); card.className = 'pigeon-card' + (this.state.selectedForTraining.includes(p.id) ? ' selected' : ''); card.style.cursor = 'pointer'; card.innerHTML = `<strong>${p.name}</strong><div style="font-size: 11px;">S:${p.speed} W:${p.stamina} N:${p.navigation} | Potencjał: ${this.config.POTENTIAL_STAT_CAPS[p.potential]}</div>`; card.onclick = () => { const idx = this.state.selectedForTraining.indexOf(p.id); if(idx > -1) { this.state.selectedForTraining.splice(idx, 1); } else { this.state.selectedForTraining.push(p.id); } this.renderTrainingSelection(eligible); document.getElementById('confirmTrainingBtn').disabled = this.state.selectedForTraining.length === 0; }; list.appendChild(card); }); },
+    selectAllForTraining(select) { const eligible = this.state.pigeons.filter(p => p.loft === 'racing' && p.status === 'healthy' && Math.floor(p.age) >= this.state.currentTraining.min_age && !p.restUntil && !p.trainingUntil && !p.isRacing && !p.retired); this.state.selectedForTraining = select ? eligible.map(p => p.id) : []; this.renderTrainingSelection(eligible); document.getElementById('confirmTrainingBtn').disabled = this.state.selectedForTraining.length === 0; },
+    confirmTrainingSelection() { this.state.selectedForTraining.forEach(pigeonId => { const pigeon = this.state.pigeons.find(p => p.id === pigeonId); if (pigeon) { pigeon.trainingUntil = Date.now() + this.state.currentTraining.duration_ms; pigeon.lastTrainingId = this.state.currentTraining.id; } }); this.msg(`🕊️ ${this.state.selectedForTraining.length} gołębi wyruszyło na trening!`); this.closeModal(); this.refreshActiveScreen(); },
+    resolveTraining(p) {
+        const training = this.config.TRAINING_SESSIONS.find(t => t.id === p.lastTrainingId);
+        p.trainingUntil = null;
+        p.lastTrainingId = null;
+
+        if (Math.random() < training.loss_chance) {
+            this.msg(`😢 Tragiczna wiadomość! ${p.name} nie wrócił z treningu...`, 'warning');
+            this.state.pigeons = this.state.pigeons.filter(pig => pig.id !== p.id);
+            return;
+        }
+
+        this.addPlayerXp(training.xp);
+        this.updateTaskProgress('train_pigeons', 1);
+
+        let statGains = [];
+        ['speed', 'stamina', 'navigation'].forEach(stat => {
+            if (Math.random() < training.stat_gain_chance && p[stat] < this.config.POTENTIAL_STAT_CAPS[p.potential]) {
+                p[stat]++;
+                statGains.push(stat.charAt(0).toUpperCase());
+            }
+        });
+
+        let gainMsg = statGains.length > 0 ? ` (+${statGains.join(', ')})` : '';
+        this.msg(`🏋️ ${p.name} wrócił z treningu!${gainMsg}`, 'success');
+
+        p.condition = Math.max(50, p.condition - 15);
+        p.form = Math.max(70, p.form - 10);
+        p.restUntil = Date.now() + (training.duration_ms / 2);
+        p.history.push({ type: 'training', name: training.name, distance: training.distance });
+    },
+    selectPigeonsForRace() {
+        this.state.selectedForRace = [];
+        const weatherKeys = Object.keys(this.config.WEATHER_TYPES);
+        this.state.currentRaceWeather = weatherKeys[Math.floor(Math.random() * weatherKeys.length)];
+        const weather = this.config.WEATHER_TYPES[this.state.currentRaceWeather];
+        const race = this.config.SEASON_RACE_SCHEDULE[this.state.currentRaceIndex];
+        const modal = this.getElement('selectionModal'); const title = this.getElement('selectionTitle'); const content = this.getElement('selectionContent');
+        title.textContent = `${race.name} - ${race.distance} km`;
+        let eligible;
+        if (race.type === 'young') { eligible = this.state.pigeons.filter(p => p.loft === 'young' && p.status === 'healthy' && p.hasTipes && Math.floor(p.age) >= this.config.MIN_AGE_YOUNG && !p.restUntil && !p.trainingUntil && !p.isRacing && !p.retired); } 
+        else { eligible = this.state.pigeons.filter(p => p.loft === 'racing' && p.status === 'healthy' && p.hasTipes && Math.floor(p.age) >= this.config.MIN_AGE_OLD && !p.restUntil && !p.trainingUntil && !p.isRacing && !p.retired); }
+        content.innerHTML = `<div class="weather-box weather-${this.state.currentRaceWeather}"><strong>Pogoda na dziś: ${weather.icon} ${weather.name}</strong></div><div class="info-box"><p>Wybierz do 10 gołębi do wyścigu.</p></div><div id="raceSelectionList"></div><button class="btn" onclick="DobryLotGame.confirmRaceSelection()" style="width: 100%; margin-top: 15px;" id="confirmRaceBtn" disabled>ROZPOCZNIJ WYŚCIG</button><button class="btn" onclick="DobryLotGame.closeModal()" style="width: 100%; margin-top: 10px;">ANULUJ</button>`;
+        modal.classList.add('active');
+        this.renderRaceSelection(eligible);
+    },
+    renderRaceSelection(eligible) {
+        const list = document.getElementById('raceSelectionList'); list.innerHTML = '';
+        eligible.forEach(p => {
+            const card = document.createElement('div'); card.className = 'pigeon-card' + (this.state.selectedForRace.includes(p.id) ? ' selected' : ''); card.style.cursor = 'pointer';
+            card.innerHTML = `<strong>${p.name}</strong><div style="font-size: 11px;">S:${p.speed} W:${p.stamina} N:${p.navigation} | Forma: ${p.form}%</div>`;
+            card.onclick = () => {
+                const idx = this.state.selectedForRace.indexOf(p.id);
+                if (idx > -1) { this.state.selectedForRace.splice(idx, 1); } else if (this.state.selectedForRace.length < 10) { this.state.selectedForRace.push(p.id); } else { this.msg('Możesz wybrać maksymalnie 10 gołębi!'); return; }
+                this.renderRaceSelection(eligible); document.getElementById('confirmRaceBtn').disabled = this.state.selectedForRace.length === 0;
+            };
+            list.appendChild(card);
+        });
+    },
+    calculateRaceResults(raceConfig, pigeonIds, weatherKey) {
+        const pigeons = pigeonIds.map(id => this.state.pigeons.find(p => p.id === id)).filter(Boolean);
+        const distance = raceConfig.distance; const weather = this.config.WEATHER_TYPES[weatherKey]; const weights = weather.weights;
+        return pigeons.map(p => {
+            let speed = p.speed + (p.activeSupplements.speed_booster || 0);
+            let basePower = (speed * weights.s) + (p.stamina * weights.t) + (p.navigation * weights.n);
+            basePower *= (p.form / 100) * (p.condition / 100);
+            if(p.perks.includes('marathoner') && distance > 400) basePower *= 1.15;
+            if(p.perks.includes('rain_specialist') && weatherKey === 'rainy') basePower *= 1.2;
+            let finalSpeed = 60000 + (basePower * 100);
+            const timeMinutes = (distance * 1000) / finalSpeed * 60;
+            return { pigeon: p, time: timeMinutes };
+        }).sort((a, b) => a.time - b.time);
+    },
+    confirmRaceSelection() {
+        this.state.racesInProgress.push({ id: Date.now(), raceIndex: this.state.currentRaceIndex, pigeonIds: this.state.selectedForRace, finishTime: Date.now() + 5000, type: 'league', weather: this.state.currentRaceWeather });
+        this.state.selectedForRace.forEach(id => { const p = this.state.pigeons.find(p => p.id === id); if (p) p.isRacing = true; });
+        this.msg(`🕊️ Gołębie wyruszyły na wyścig!`, 'success');
+        this.closeModal(); this.refreshActiveScreen();
+    },
+    resolveRace(race) {
+        const raceConfig = this.config.SEASON_RACE_SCHEDULE[race.raceIndex];
+        const results = this.calculateRaceResults(raceConfig, race.pigeonIds, race.weather);
+        let html = '';
+        results.forEach((r, idx) => {
+            const p = r.pigeon; if (!p) return;
+            const place = idx + 1;
+            const prizeMultiplier = this.config.LEAGUE_RACE_CONFIG.prize_multiplier;
+            const prize = place === 1 ? raceConfig.prize * prizeMultiplier : (place === 2 ? Math.round(raceConfig.prize * 0.5 * prizeMultiplier) : (place === 3 ? Math.round(raceConfig.prize * 0.25 * prizeMultiplier) : 0));
+            const xpGain = place === 1 ? 50 : (place <= 3 ? 25 : 10);
+            
+            let pointsGained = 0;
+            if (race.type === 'league' && place <= this.config.LEAGUE_RACE_CONFIG.points.length) { pointsGained = this.config.LEAGUE_RACE_CONFIG.points[place - 1]; this.state.leaguePoints += pointsGained; }
+
+            html += `<div class="pigeon-card"><strong>${place}. ${p.name}</strong> - ⏱️ ${this.formatRaceTime(r.time)}${prize > 0 ? ` | 💰 +${prize} zł` : ''}${pointsGained > 0 ? ` | 🏆 +${pointsGained} pkt.` : ''}</div>`;
+            p.races++;
+            p.isRacing = false;
+            let conditionLoss = 40 * (p.activeSupplements.electrolytes ? 0.75 : 1);
+            p.form = Math.max(50, p.form - 20);
+            p.condition = Math.max(20, p.condition - conditionLoss);
+            p.revealedPotential = Math.min(p.potential, Math.floor(p.races / 5));
+            p.activeSupplements = {}; // Reset suplementów po locie
+            Object.keys(this.config.PIGEON_TITLES).forEach(titleId => {
+                if (!p.titles.includes(titleId) && this.config.PIGEON_TITLES[titleId].condition(p)) {
+                    p.titles.push(titleId);
+                    this.msg(`🏅 ${p.name} zdobył tytuł: ${this.config.PIGEON_TITLES[titleId].name}!`, 'success');
+                }
+            });
+            let restDuration = (this.config.REST_BASE_DURATION_MS_PER_100KM / 100) * raceConfig.distance;
+            if (this.state.loftFeed[p.loft] === 'feed_racing') restDuration *= 0.8;
+            p.restUntil = Date.now() + (p.perks.includes('strong_mind') ? restDuration * 0.75 : restDuration);
+
+            p.history.push({ type: 'race', name: raceConfig.name, distance: raceConfig.distance, place: place });
+            if (place === 1) { p.wins++; this.updateTaskProgress('win_races', 1); }
+            if (prize > 0) { this.state.money += prize; this.playSound('cash'); this.updateTaskProgress('earn_money', prize); }
+            this.addPlayerXp(xpGain);
+        });
+        
+        this.state.currentRaceIndex++;
+        this.getElement('resultsTitle').textContent = `🏁 Wyniki: ${raceConfig.name}`; this.getElement('resultsContent').innerHTML = html; this.getElement('resultsModal').classList.add('active');
+        this.updateUI(); this.refreshActiveScreen();
+    },
+    renderAchievements() { const list = this.getElement('achievementsList'); if(!list) return; list.innerHTML = Object.entries(this.config.ACHIEVEMENTS).map(([id, ach]) => `<div class="achievement ${this.state.achievements[id] ? 'unlocked' : 'locked'}"><div class="achievement-icon">${ach.icon}</div><div class="achievement-details"><strong>${ach.name}</strong><p>${ach.desc}</p></div></div>`).join(''); },
+    openSkinChanger() { this.renderSkinChanger(); this.getElement('skinChangerModal').classList.add('active'); },
+    renderSkinChanger() { const container = this.getElement('skinOptionsContainer'); const loftType = this.state.currentLoftType; container.innerHTML = ''; Object.entries(this.config.SKINS).forEach(([skinId, skinData]) => { const option = document.createElement('div'); option.className = 'skin-option'; if (this.state.buildingSkins[loftType] === skinId) { option.classList.add('active'); } let actionButton; if (this.state.unlockedSkins[loftType].includes(skinId)) { actionButton = `<button class="btn" ${this.state.buildingSkins[loftType] === skinId ? 'disabled' : ''} onclick="DobryLotGame.selectSkin('${skinId}')">Wybierz</button>`; } else { actionButton = `<button class="btn btn-unlock" onclick="DobryLotGame.buySkin('${skinId}')">Kup (🪙 ${skinData.cost} ZM)</button>`; } option.innerHTML = `<strong>${skinData.name}</strong> ${actionButton}`; container.appendChild(option); }); },
+    selectSkin(skinId) { const loftType = this.state.currentLoftType; this.state.buildingSkins[loftType] = skinId; this.closeModal(); this.goTo('farm'); this.msg('Wygląd gołębnika został zmieniony!', 'success'); },
+    buySkin(skinId) { const loftType = this.state.currentLoftType; const skinData = this.config.SKINS[skinId]; if (this.state.goldCoins < skinData.cost) { this.msg('Za mało Złotych Monet!', 'warning'); return; } this.state.goldCoins -= skinData.cost; this.state.unlockedSkins[loftType].push(skinId); this.playSound('cash'); this.selectSkin(skinId); this.updateUI(); },
+    renderLeague() {
+        const leagueData = this.config.LEAGUES[this.state.league];
+        const infoDiv = this.getElement('leagueInfo');
+        infoDiv.innerHTML = `<div class="league-info"><h2>Sezon ${this.state.seasonNumber} / Rok ${this.state.seasonYear}</h2><div class="league-badge league-badge-${leagueData.id}">${leagueData.name}</div><p><strong>Twoje punkty:</strong> ${this.state.leaguePoints}</p><p><strong>Lot w sezonie:</strong> ${this.state.currentRaceIndex} / ${this.config.SEASON_RACE_SCHEDULE.length}</p><p><strong>Koniec sezonu za:</strong> <span id="seasonTimer">${this.formatTime(this.state.seasonEnd - Date.now())}</span></p><div class="info-box" style="margin-top:15px;"> Awans: <strong>${leagueData.promotion} pkt.</strong> | Spadek: poniżej <strong>${leagueData.relegation} pkt.</strong></div></div>`;
+        const table = this.getElement('leagueTable'); let tableHTML = '<thead><tr><th>#</th><th>Hodowca</th><th>Punkty</th></tr></thead><tbody>';
+        const fullTable = [...this.state.leagueTable, { name: this.state.player.name, points: this.state.leaguePoints, isPlayer: true }];
+        fullTable.sort((a,b) => b.points - a.points);
+        fullTable.forEach((entry, index) => { tableHTML += `<tr class="${entry.isPlayer ? 'player-row' : ''}"><td>${index + 1}</td><td>${entry.name}</td><td>${entry.points}</td></tr>`; });
+        tableHTML += '</tbody>'; table.innerHTML = tableHTML;
+    },
+    startNewSeason() {
+        this.state.seasonEnd = Date.now() + this.config.SEASON_DURATION_MS; this.state.leaguePoints = 0; this.state.currentRaceIndex = 0; this.state.leagueTable = []; const leagueData = this.config.LEAGUES[this.state.league];
+        for (let i = 0; i < leagueData.opponents; i++) { this.state.leagueTable.push({ name: `Hodowca ${i+1}`, points: Math.floor(Math.random() * (leagueData.promotion + 50)) }); }
+    },
+    endSeason() {
+        const leagueData = this.config.LEAGUES[this.state.league]; const leagueIds = Object.keys(this.config.LEAGUES); const currentLeagueIndex = leagueIds.indexOf(this.state.league);
+        if (this.state.leaguePoints >= leagueData.promotion && currentLeagueIndex < leagueIds.length - 1) { this.state.league = leagueIds[currentLeagueIndex + 1]; this.msg(`🏆 AWANS! Witaj w ${this.config.LEAGUES[this.state.league].name}!`, 'success');
+        } else if (this.state.leaguePoints < leagueData.relegation && currentLeagueIndex > 0) { this.state.league = leagueIds[currentLeagueIndex - 1]; this.msg(`😢 SPADEK! Wracasz do ${this.config.LEAGUES[this.state.league].name}.`, 'warning');
+        } else { this.msg(`Sezon zakończony! Utrzymujesz się w ${leagueData.name}.`, 'info'); }
+        const rank = this.state.leagueTable.filter(o => o.points > this.state.leaguePoints).length + 1;
+        if(rank <= 3) { this.state.money += leagueData.prize.money; this.state.goldCoins += leagueData.prize.gold; this.msg(`Za zajęcie ${rank}. miejsca otrzymujesz ${leagueData.prize.money} zł i ${leagueData.prize.gold} ZM!`, 'success'); }
+        this.state.seasonNumber++;
+        if (this.state.seasonNumber > 6) { this.state.seasonNumber = 1; this.state.seasonYear++; }
+        this.startNewSeason(); this.updateUI();
+        if (document.querySelector('.screen.active')?.id === 'league') { this.renderLeague(); }
+    },
+    checkDailyTasks() {
+        const today = new Date().toDateString();
+        if (this.state.dailyTasks.date !== today) {
+            this.state.dailyTasks.date = today;
+            const pool = [...this.config.DAILY_TASKS_POOL];
+            this.state.dailyTasks.tasks = [];
+            for (let i = 0; i < 3; i++) {
+                if (pool.length === 0) break;
+                const taskIndex = Math.floor(Math.random() * pool.length);
+                const task = pool.splice(taskIndex, 1)[0];
+                this.state.dailyTasks.tasks.push({ ...task, progress: 0, claimed: false });
+            }
+        }
+    },
+    updateTaskProgress(type, amount) {
+        this.state.dailyTasks.tasks.forEach(task => {
+            if (task.type === type && !task.claimed) {
+                task.progress = Math.min(task.target, task.progress + amount);
+            }
+        });
+        if (document.querySelector('.screen.active')?.id === 'tasks') { this.renderTasks(); }
+    },
+    renderTasks() {
+        this.checkDailyTasks();
+        const list = this.getElement('tasksList');
+        list.innerHTML = '';
+        if (!this.state.dailyTasks.tasks || this.state.dailyTasks.tasks.length === 0) {
+            list.innerHTML = '<p>Brak zadań na dziś. Sprawdź jutro!</p>';
+            return;
+        }
+        this.state.dailyTasks.tasks.forEach((task, index) => {
+            const card = document.createElement('div'); card.className = 'card task-card';
+            const progressPercent = (task.progress / task.target) * 100;
+            const isCompleted = task.progress >= task.target;
+            let rewardText = '';
+            if (task.reward.money) rewardText = `💰 ${task.reward.money} zł`;
+            if (task.reward.goldCoins) rewardText = `🪙 ${task.reward.goldCoins} ZM`;
+            card.innerHTML = `<div class="task-info"><strong>${task.text}</strong> (${task.progress}/${task.target})<div class="task-progress-bar"><div class="task-progress-fill" style="width: ${progressPercent}%"></div></div></div><button class="btn" onclick="DobryLotGame.claimTaskReward(${index})" ${!isCompleted || task.claimed ? 'disabled' : ''}>${task.claimed ? 'Odebrano' : (isCompleted ? `Odbierz (${rewardText})` : `Nagroda: ${rewardText}`)}</button>`;
+            list.appendChild(card);
+        });
+    },
+    claimTaskReward(index) {
+        const task = this.state.dailyTasks.tasks[index];
+        if (task.progress >= task.target && !task.claimed) {
+            task.claimed = true;
+            let rewardMsg = "Odebrano nagrodę: ";
+            if (task.reward.money) { this.state.money += task.reward.money; rewardMsg += `💰 ${task.reward.money} zł!`; }
+            if (task.reward.goldCoins) { this.state.goldCoins += task.reward.goldCoins; rewardMsg += `🪙 ${task.reward.goldCoins} ZM!`; }
+            this.msg(rewardMsg, 'success'); this.playSound('cash');
+            this.renderTasks(); this.updateUI();
+        }
+    },
+    switchMarketTab(tabElement, tabId) {
+        tabElement.parentElement.querySelectorAll('.market-tab').forEach(t => t.classList.remove('active'));
+        tabElement.parentElement.parentElement.querySelectorAll('.market-tab-content').forEach(c => c.classList.remove('active'));
+        tabElement.classList.add('active');
+        this.getElement(tabId).classList.add('active');
+    },
+    renderAuctions() {
+        const publicList = this.getElement('auctionList');
+        publicList.innerHTML = this.state.market.publicAuctions.length > 0 ? '' : '<p>Brak ofert na aukcjach graczy. Wystaw swojego gołębia lub sprawdź później!</p>';
+        this.state.market.publicAuctions.forEach(auction => {
+            const p = auction.pigeon;
+            const card = document.createElement('div'); card.className = 'auction-card';
+            const titles = p.titles.map(tid => this.config.PIGEON_TITLES[tid].name).join(', ');
+            card.innerHTML = `<div class="auction-details">
+                <strong>${p.name}</strong> <small>(${this.config.BLOODLINES[p.bloodline].name})</small><br>
+                <small>Potencjał: <span class="pigeon-potential">${'★'.repeat(p.potential)}</span> | Tytuły: ${titles || 'Brak'}</small>
+            </div>
+            <button class="btn" onclick="DobryLotGame.buyFromAuction(${auction.id})">Kup (🪙 ${auction.price} ZM)</button>`;
+            publicList.appendChild(card);
+        });
+
+        const myList = this.getElement('myAuctionList');
+        myList.innerHTML = this.state.market.playerAuctions.length > 0 ? '' : '<p>Nie wystawiłeś żadnego gołębia na aukcję.</p>';
+        this.state.market.playerAuctions.forEach(auction => {
+            const p = auction.pigeon;
+            const card = document.createElement('div'); card.className = 'auction-card';
+            const timeLeft = auction.expires - Date.now();
+            card.innerHTML = `<div class="auction-details">
+                <strong>${p.name}</strong> <small>(${this.config.BLOODLINES[p.bloodline].name})</small><br>
+                <small>Cena: 🪙 ${auction.price} ZM | Wygasa za: ${this.formatTime(timeLeft)}</small>
+            </div>
+            <button class="btn btn-sell" onclick="DobryLotGame.cancelAuction(${auction.id})">Anuluj</button>`;
+            myList.appendChild(card);
+        });
+    },
+    generatePublicAuctions() {
+        this.state.market.publicAuctions = [];
+        const numAuctions = 3 + Math.floor(Math.random() * 5);
+        for (let i = 0; i < numAuctions; i++) {
+            const pigeon = this.createPigeon({bloodline: Object.keys(this.config.BLOODLINES)[Math.floor(Math.random() * 6)], age: 12 + Math.random() * 24});
+            if (Math.random() > 0.5) pigeon.titles.push('ace_flyer');
+            const price = 10 + Math.floor(pigeon.potential * 10 + pigeon.titles.length * 20 + Math.random() * 10);
+            this.state.market.publicAuctions.push({id: pigeon.id, pigeon, price, seller: 'Inny Hodowca'});
+        }
+    },
+    listPigeonOnAuction(pigeonId) {
+        const priceStr = prompt("Podaj cenę 'Kup Teraz' w Złotych Monetach (ZM):", "50");
+        const price = parseInt(priceStr);
+        if (isNaN(price) || price <= 0) { this.msg('Podano nieprawidłową cenę.', 'warning'); return; }
+        
+        const pigeonIndex = this.state.pigeons.findIndex(p => p.id === pigeonId);
+        if (pigeonIndex > -1) {
+            const pigeon = this.state.pigeons[pigeonIndex];
+            this.state.pigeons.splice(pigeonIndex, 1);
+            this.state.market.playerAuctions.push({
+                id: pigeon.id, pigeon, price,
+                expires: Date.now() + this.config.AUCTION_DURATION_MS
+            });
+            this.msg(`${pigeon.name} został wystawiony na aukcję!`, 'success');
+            this.closeModal(); this.refreshActiveScreen();
+        }
+    },
+    buyFromAuction(auctionId) {
+        const auctionIndex = this.state.market.publicAuctions.findIndex(a => a.id === auctionId);
+        if (auctionIndex === -1) return;
+        const auction = this.state.market.publicAuctions[auctionIndex];
+        const currentCapacity = this.state.pigeons.filter(p=>!p.retired && (p.loft === 'racing' || p.loft === 'young')).length;
+        const maxCapacity = (this.state.unlockedLoftPages.racing + this.state.unlockedLoftPages.young) * this.config.SHELVES_PER_PAGE;
+        if(currentCapacity >= maxCapacity) { this.msg('Gołębniki są pełne!', 'warning'); return; }
+        if (this.state.goldCoins < auction.price) { this.msg('Za mało Złotych Monet!', 'warning'); return; }
+
+        this.state.goldCoins -= auction.price;
+        const pigeon = auction.pigeon;
+        pigeon.loft = pigeon.age < this.config.MIN_AGE_OLD ? 'young' : 'racing';
+        this.addPigeon(pigeon);
+        this.state.market.publicAuctions.splice(auctionIndex, 1);
+        this.msg(`Kupiono ${pigeon.name} z aukcji!`, 'success');
+        this.playSound('cash');
+        this.renderAuctions();
+        this.updateUI();
+    },
+    cancelAuction(auctionId) {
+        const auctionIndex = this.state.market.playerAuctions.findIndex(a => a.id === auctionId);
+        if (auctionIndex > -1) {
+            const auction = this.state.market.playerAuctions[auctionIndex];
+            this.state.market.playerAuctions.splice(auctionIndex, 1);
+            this.addPigeon(auction.pigeon);
+            this.msg(`${auction.pigeon.name} wrócił z aukcji do gołębnika.`, 'info');
+            this.renderAuctions();
+        }
+    },
+    checkPlayerAuctions() {
+        const now = Date.now();
+        const expired = [];
+        this.state.market.playerAuctions = this.state.market.playerAuctions.filter(auction => {
+            if (now > auction.expires) {
+                expired.push(auction);
+                return false;
+            }
+            if (Math.random() < 0.0001) { 
+                const earnings = Math.floor(auction.price * (1 - this.config.AUCTION_COMMISSION));
+                this.state.goldCoins += earnings;
+                this.msg(`🎉 Sprzedano ${auction.pigeon.name} na aukcji za ${auction.price} ZM! Otrzymujesz ${earnings} ZM po prowizji.`, 'success');
+                this.playSound('cash');
+                return false;
+            }
+            return true;
+        });
+        if (expired.length > 0) {
+            expired.forEach(auction => {
+                this.addPigeon(auction.pigeon);
+                this.msg(`Aukcja ${auction.pigeon.name} wygasła. Gołąb wrócił do gołębnika.`, 'info');
+            });
+        }
+        if (document.querySelector('.screen.active')?.id === 'market') {
+            this.renderAuctions();
+        }
+    },
+    openFeedModal() {
+        const container = this.getElement('feedOptionsContainer');
+        const loftType = this.state.currentLoftType;
+        container.innerHTML = '';
+        Object.entries(this.config.ITEMS).filter(([key, item]) => item.type === 'feed').forEach(([key, item]) => {
+            if (loftType === 'breeding' && key === 'feed_racing') return;
+            if (loftType !== 'breeding' && key === 'feed_breeding') return;
+            
+            const option = document.createElement('div');
+            option.className = 'feed-option' + (this.state.loftFeed[loftType] === key ? ' active' : '');
+            option.innerHTML = `<div><strong>${item.icon} ${item.name}</strong><br><small>Posiadane: ${this.state.inventory[key] || 0} kg</small></div>
+                <button class="btn" onclick="DobryLotGame.setFeedType('${key}')" ${this.state.loftFeed[loftType] === key ? 'disabled' : ''}>Wybierz</button>`;
+            container.appendChild(option);
+        });
+        this.getElement('feedModal').classList.add('active');
+    },
+    setFeedType(feedKey) {
+        this.state.loftFeed[this.state.currentLoftType] = feedKey;
+        this.msg(`Zmieniono karmę w tym gołębniku na ${this.config.ITEMS[feedKey].name}.`, 'success');
+        this.closeModal();
+        this.renderLoft();
+    },
+    consumeResources() {
+        this.state.lastFoodConsumption = Date.now();
+        const totalPigeons = this.state.pigeons.filter(p => !p.retired).length;
+
+        if (this.state.water > 0) {
+            this.state.water = Math.max(0, this.state.water - totalPigeons);
+        } else {
+            this.msg(`KRYTYCZNY ALERT: BRAK WODY W POIDŁACH! Gołębie gwałtownie tracą siły!`, 'warning');
+            this.state.pigeons.forEach(p => { p.form = Math.max(0, p.form - 10); p.condition = Math.max(0, p.condition - 10); });
+        }
+
+        ['racing', 'breeding', 'young'].forEach(loftType => {
+            const pigeonsInLoft = this.state.pigeons.filter(p => p.loft === loftType && !p.retired).length;
+            if (pigeonsInLoft === 0) return;
+
+            const feedType = this.state.loftFeed[loftType];
+            if ((this.state.inventory[feedType] || 0) >= pigeonsInLoft) {
+                this.state.inventory[feedType] -= pigeonsInLoft;
+            } else {
+                if((this.state.inventory['feed_basic'] || 0) >= pigeonsInLoft) {
+                    this.state.inventory['feed_basic'] -= pigeonsInLoft;
+                    this.state.loftFeed[loftType] = 'feed_basic';
+                    this.msg(`Skończyła się karma specjalna w gołębniku ${loftType}! Zmieniono na Bytową.`, 'warning');
+                } else {
+                    this.msg(`UWAGA: BRAK KARMY w gołębniku ${loftType}! Gołębie tracą formę i kondycję!`, 'warning');
+                    this.state.pigeons.filter(p => p.loft === loftType).forEach(p => {
+                        p.form = Math.max(0, p.form - 5);
+                        p.condition = Math.max(0, p.condition - 5);
+                    });
+                }
+            }
+        });
+        this.updateUI();
+    },
+    useSupplement(supplementKey, pigeonId) {
+        const p = this.state.pigeons.find(p => p.id === pigeonId);
+        if (!p) return;
+
+        if ((this.state.inventory[supplementKey] || 0) > 0) {
+            this.state.inventory[supplementKey]--;
+            if(supplementKey === 'speed_booster') {
+                p.activeSupplements.speed_booster = 5;
+            } else if (supplementKey === 'electrolytes') {
+                p.activeSupplements.electrolytes = true;
+            }
+            this.msg(`Podano ${this.config.ITEMS[supplementKey].name} gołębiowi ${p.name}.`, 'success');
+            this.showPigeonDetails(p.id);
+            this.updateUI();
+        } else {
+            this.msg(`Brak ${this.config.ITEMS[supplementKey].name} w ekwipunku!`, 'warning');
+        }
+    },
+    refillWater() {
+        this.state.water = 1000;
+        this.msg('💧 Poidła zostały napełnione świeżą wodą!', 'success');
+        this.updateUI();
+    },
+    // --- POCZĄTEK NOWYCH FUNKCJI DLA PŁATNOŚCI ---
+    renderPremiumShop() {
+        const container = this.getElement('premiumShopItems');
+        if (!container) return;
+        container.innerHTML = '';
+        Object.entries(this.premiumProducts).forEach(([id, product]) => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'stat-item';
+            itemDiv.style.cursor = 'pointer';
+            itemDiv.innerHTML = `
+                <div style="font-size: 40px;">${product.icon}</div>
+                <h4>${product.name}</h4>
+                <p style="color: var(--gold-color); font-weight: bold;">${product.price}</p>
+            `;
+            itemDiv.onclick = () => this.buyPremiumProduct(id);
+            container.appendChild(itemDiv);
+        });
+    },
+
+    async buyPremiumProduct(productId) {
+        try {
+            const response = await fetch(this.backendUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ productId: productId }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Network response was not ok');
+            }
+
+            const session = await response.json();
+            const result = await this.stripe.redirectToCheckout({ sessionId: session.id });
+
+            if (result.error) {
+                this.msg(result.error.message, 'warning');
+            }
+        } catch (error) {
+            console.error('Error during checkout:', error);
+            this.msg('Wystąpił błąd podczas próby płatności.', 'warning');
+        }
+    },
+
+    checkPaymentStatus() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const success = urlParams.get('payment_success');
+        const productId = urlParams.get('product_id');
+
+        if (success && productId) {
+            const product = this.premiumProducts[productId];
+            if (product) {
+                this.state.goldCoins += product.zm_amount;
+                this.msg(`🎉 Płatność zakończona sukcesem! Otrzymujesz ${product.zm_amount} Złotych Monet!`, 'success');
+                this.playSound('cash');
+                this.saveGame();
+                this.updateUI();
+            }
+            
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, newUrl);
+        }
+    }
+    // --- KONIEC NOWYCH FUNKCJI DLA PŁATNOŚCI ---
+};
+
+document.addEventListener('DOMContentLoaded', () => { DobryLotGame.init(); });
+</script>
+</body>
+</html>
