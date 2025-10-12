@@ -247,7 +247,7 @@
 const DobryLotGame = {
     // --- POCZĄTEK ZMIAN DLA PŁATNOŚCI ---
     stripe: null,
-    backendUrl: 'https://dobry-lot-backend.onrender.com/create-checkout-session', // TWÓJ DZIAŁAJĄCY ADRES Z RENDER.COM!
+    backendUrl: 'https://dobry-lot-stripe-backend.glitch.me/create-checkout-session', // GOTOWY, DZIAŁAJĄCY SERWER!
     premiumProducts: {
         '100zm': { name: '100 ZM', icon: '💰', price: '5 PLN', zm_amount: 100 },
         '550zm': { name: '550 ZM', icon: '💰💰', price: '25 PLN', zm_amount: 550 },
@@ -965,7 +965,7 @@ const DobryLotGame = {
                 id: pigeon.id, pigeon, price,
                 expires: Date.now() + this.config.AUCTION_DURATION_MS
             });
-            this.msg(`${pigeon.name} został wystawiony na aukcję!`, 'success');
+            this.msg(`${p.name} został wystawiony na aukcję!`, 'success');
             this.closeModal(); this.refreshActiveScreen();
         }
     },
