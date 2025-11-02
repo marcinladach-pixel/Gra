@@ -29,7 +29,7 @@
         
         /* Menu Główne */
         #mainMenu.screen.active { background: radial-gradient(circle at 50% 100%, #fdbb2d 0%, #f48924 25%, #d65b4a 50%, #4a3f63 100%); justify-content: center; align-items: center; padding: 20px; }
-        #mainMenu .menu { position: relative; display:flex; flex-direction:column; justify-content: space-around; height: 100%; width: 100%; max-width: 400px; }
+        #mainMenu .menu { display:flex; flex-direction:column; justify-content: space-around; height: 100%; width: 100%; max-width: 400px; }
         .main-header { text-align: center; margin-bottom: 20px; }
         .main-logo { font-family: 'Arial Black', Gadget, sans-serif; font-size: clamp(3em, 12vw, 5em); color: #f0f0f0; text-transform: uppercase; text-shadow: -2px -2px 0 #1e5799, 2px -2px 0 #1e5799, -2px 2px 0 #1e5799, 2px 2px 0 #1e5799, 4px 4px 5px rgba(0,0,0,0.4); line-height: 1; }
         .main-subtitle { font-size: clamp(1em, 4vw, 1.5em); color: white; font-weight: bold; text-shadow: 1px 1px 3px rgba(0,0,0,0.5); margin-top: 10px; }
@@ -41,7 +41,6 @@
         .menu-btn-text { font-size: 18px; font-weight: bold; text-transform: uppercase; }
         .save-load-box { margin-top: 20px; display: flex; justify-content: center; gap: 10px; }
         .save-load-box .btn { padding: 8px 16px; font-size: 14px; }
-        .footer { position: absolute; bottom: 20px; left: 0; right: 0; text-align: center; font-size: 12px; color: rgba(255, 255, 255, 0.6); text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
         
         /* Podwórko */
         #farm.screen.active { background: linear-gradient(to bottom, #87CEEB 0%, #90d8f0 60%, #a8e063 60%, #56ab2f 100%); }
@@ -159,9 +158,6 @@
             <button class="btn menu-btn" onclick="DobryLotGame.goTo('achievements')"><span class="menu-btn-icon">🏅</span><span class="menu-btn-text">Osiągnięcia</span></button>
         </nav>
         <div class="save-load-box"><button class="btn" onclick="DobryLotGame.saveGame()">Zapisz</button><button class="btn" onclick="DobryLotGame.loadGame()">Wczytaj</button></div>
-        <div class="footer">
-            ©htm2025 Marcin Ladach. Wszelkie prawa zastrzeżone.
-        </div>
     </div>
 </div>
 
@@ -303,6 +299,50 @@ const DobryLotGame = {
         LEAGUES: { bronze: { id: 'bronze', name: 'Liga Brązowa', promotion: 150, relegation: 50, opponents: 9, prize: { money: 1000, gold: 5 } }, silver: { id: 'silver', name: 'Liga Srebrna', promotion: 250, relegation: 100, opponents: 14, prize: { money: 5000, gold: 15 } }, gold: { id: 'gold', name: 'Liga Złota', promotion: 400, relegation: 200, opponents: 19, prize: { money: 15000, gold: 30 } }, diamond: { id: 'diamond', name: 'Liga Diamentowa', promotion: 999, relegation: 300, opponents: 19, prize: { money: 50000, gold: 75 } } },
         LEAGUE_RACE_CONFIG: { points: [25, 18, 15, 12, 10, 8, 6, 4, 2, 1], prize_multiplier: 1.0 },
         EGG_HATCH_DURATION_MS: 10 * 60 * 1000, REST_BASE_DURATION_MS_PER_100KM: 3 * 60 * 1000, AGE_UP_INTERVAL_MS: 5 * 60 * 1000,
+       BLOODLINES: {
+        janssen: { name: 'Janssen', icon: '🕊️', speed: 1.2, stamina: 1.0, navigation: 1.0, cost: 2000 },
+        vanloon: { name: 'Van Loon', icon: '🐦', speed: 1.0, stamina: 1.2, navigation: 1.0, cost: 2000 },
+        aarden: { name: 'Aarden', icon: '🦅', speed: 0.9, stamina: 1.3, navigation: 1.1, cost: 3500 },
+        meulemans: { name: 'Meulemans', icon: '🦉', speed: 1.1, stamina: 1.1, navigation: 1.1, cost: 3500 },
+        vandenbulck: { name: 'Van den Bulck', icon: '⚡️', speed: 1.3, stamina: 0.9, navigation: 1.0, cost: 3500 },
+        medrysa: { name: 'Mędrysa Super Klasa', icon: '🏆', speed: 1.0, stamina: 1.4, navigation: 1.3, cost: 10000 },
+        stichelbaut: { name: 'Stichelbaut', icon: '🛡️', speed: 1.0, stamina: 1.2, navigation: 1.2, cost: 4000 },
+        koen_minderhoud: { name: 'Koen Minderhoud', icon: '🌊', speed: 1.1, stamina: 1.1, navigation: 1.3, cost: 5000 },
+        gaby_vandenabeele: { name: 'Gaby Vandenabeele', icon: '👑', speed: 1.2, stamina: 1.1, navigation: 1.2, cost: 7500 },
+        krzysztof_szlaga: { name: 'Krzysztof Szlaga', icon: '🇵🇱', speed: 1.15, stamina: 1.25, navigation: 1.1, cost: 6000 },
+        hardy_kruger: { name: 'Hardy Krüger', icon: '🇩🇪', speed: 1.25, stamina: 1.0, navigation: 1.15, cost: 6500 },
+        leo_heremans: { name: 'Leo Heremans', icon: '🚀', speed: 1.4, stamina: 0.8, navigation: 1.1, cost: 8000 },
+
+        // ==========================================================
+        // === 20 NOWYCH LEGENDARNYCH RAS I LINII (AI GENERATED) ===
+        // ==========================================================
+
+        // --- Rasy Zaawansowane (Advanced Lofts) ---
+        jozef_van_den_broucke: { name: 'Jozef Van den Broucke', icon: '🇧🇪', speed: 1.1, stamina: 1.2, navigation: 1.2, cost: 9000 },
+        chris_hebberecht: { name: 'Chris Hebberecht', icon: '⚜️', speed: 1.0, stamina: 1.4, navigation: 1.2, cost: 11000 },
+        gerard_koopman: { name: 'Gerard Koopman', icon: '🇳🇱', speed: 1.2, stamina: 1.1, navigation: 1.3, cost: 12000 },
+        pieter_veenstra: { name: 'Pieter Veenstra', icon: '💎', speed: 1.15, stamina: 1.2, navigation: 1.25, cost: 14000 },
+        lepuch_bros: { name: 'Bracia Łepuch', icon: '🥇', speed: 1.1, stamina: 1.35, navigation: 1.2, cost: 15000 },
+
+        // --- Rasy Elitarne (Elite Lofts & Lines) ---
+        dirk_van_dyck: { name: 'Dirk Van Dyck', icon: '🎨', speed: 1.3, stamina: 1.1, navigation: 1.2, cost: 18000 },
+        jos_thone: { name: 'Jos Thoné', icon: '🌍', speed: 1.2, stamina: 1.2, navigation: 1.2, cost: 20000 },
+        palka_maraton: { name: 'Tadeusz Pałka "Maraton"', icon: '🇵🇱💪', speed: 0.9, stamina: 1.5, navigation: 1.4, cost: 22000 },
+        batenburg_van_de_merwe: { name: 'Batenburg-van de Merwe', icon: '🌌', speed: 1.0, stamina: 1.6, navigation: 1.3, cost: 25000 },
+        andreas_drapa: { name: 'Andreas Drapa', icon: '🇩🇪🏆', speed: 1.35, stamina: 1.1, navigation: 1.2, cost: 28000 },
+        
+        // --- Linie Legendarne (Legendary "Bloodlines" from famous pigeons) ---
+        harry_line: { name: 'Linia "Harry"', icon: '✨', speed: 1.2, stamina: 1.3, navigation: 1.5, cost: 35000 },
+        wiosna_line: { name: 'Linia "Wiosna"', icon: '🌸', speed: 1.25, stamina: 1.4, navigation: 1.35, cost: 45000 },
+        kannibaal_line: { name: 'Linia "Kannibaal"', icon: '🩸', speed: 1.45, stamina: 1.1, navigation: 1.4, cost: 50000 },
+        dolle_line: { name: 'Linia "Dolle"', icon: '🌪️', speed: 1.0, stamina: 1.7, navigation: 1.5, cost: 60000 },
+        wittenbuik_line: { name: 'Linia "Wittenbuik"', icon: '👑', speed: 1.3, stamina: 1.3, navigation: 1.3, cost: 65000 },
+        birdy_line: { name: 'Linia "Birdy"', icon: '🎶', speed: 1.1, stamina: 1.5, navigation: 1.8, cost: 75000 },
+        new_kim_line: { name: 'Linia "New Kim"', icon: '♀️', speed: 1.4, stamina: 1.2, navigation: 1.5, cost: 90000 },
+        bolt_line: { name: 'Linia "Bolt"', icon: '⚡️💨', speed: 1.6, stamina: 0.9, navigation: 1.3, cost: 100000 },
+        armando_line: { name: 'Linia "Armando"', icon: '💰', speed: 1.2, stamina: 1.8, navigation: 1.6, cost: 125000 },
+        luc_wiels: { name: 'Super Gołąb "Luc Wiels"', icon: '🌌🏆', speed: 1.5, stamina: 1.5, navigation: 1.5, cost: 150000 }
+    },
         TRAINING_SESSIONS: [ { id: 't1', name: 'Lot wokół domu', distance: 15, duration_ms: 10 * 60 * 1000, xp: 5, loss_chance: 0.01, min_age: 4, stat_gain_chance: 0.1 }, { id: 't2', name: 'Trening okręgowy', distance: 50, duration_ms: 30 * 60 * 1000, xp: 15, loss_chance: 0.02, min_age: 6, stat_gain_chance: 0.15 }, { id: 't3', name: 'Lot wojewódzki', distance: 100, duration_ms: 90 * 60 * 1000, xp: 30, loss_chance: 0.04, min_age: 9, stat_gain_chance: 0.2 }, { id: 't4', name: 'Próba generalna', distance: 180, duration_ms: 180 * 60 * 1000, xp: 50, loss_chance: 0.06, min_age: 12, stat_gain_chance: 0.25 } ],
         PERKS: { rain_specialist: { name: "Specjalista od deszczu", icon: "💧", desc: "Traci mniej szybkości w deszczową pogodę." }, marathoner: { name: "Serce maratończyka", icon: "❤️‍🔥", desc: "Znacznie lepiej radzi sobie na dystansach > 400 km." }, strong_mind: { name: "Silna psychika", icon: "🧠", desc: "Szybciej odzyskuje formę i kondycję po wyścigu." }, },
         ACHIEVEMENTS: { first_win: { icon: "🏆", name: "Pierwsze Zwycięstwo", desc: "Wygraj swój pierwszy wyścig." }, millionaire: { icon: "💰", name: "Milioner", desc: "Zgromadź 1,000,000 zł." }, geneticist: { icon: "🧬", name: "Genetyk", desc: "Wyhoduj gołębia z trzema statystykami powyżej 90." }, specialist: { icon: "🌟", name: "Specjalista", desc: "Wyhoduj gołębia z unikalną cechą (perkiem)." }, }
@@ -310,7 +350,7 @@ const DobryLotGame = {
     state: {}, tempHatchling: null, tempPairing: null,
     init() {
         // --- POCZĄTEK ZMIAN DLA PŁATNOŚCI ---
-        this.stripe = Stripe('pk_test_51SH94xDQYgO7moLRkO8n4jNGPYVSLqECkjQgpwiEmSZvrhtlW2QAVoODyCvxVgjezVuFvu2nZ0zaJ94UOts2iCTF00vnJ5599Z'); 
+        
         // --- KONIEC ZMIAN DLA PŁATNOŚCI ---
 
         if (localStorage.getItem('dobryLotSaveData_v4.0')) { this.loadGame(); } else { this.startNewGame(); }
@@ -1175,6 +1215,5 @@ const DobryLotGame = {
 
 document.addEventListener('DOMContentLoaded', () => { DobryLotGame.init(); });
 </script>
-<script src="https://studio-8531852641-6e6bf.web.app/scripts/game-bridge.js"></script>
 </body>
-</html>
+                                                                                                                                                                                                                                                                                                                                                                                                                              </html>
